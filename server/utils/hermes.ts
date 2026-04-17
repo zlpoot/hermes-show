@@ -5,6 +5,16 @@ import yaml from 'yaml'
 import Database from 'better-sqlite3'
 
 export const getHermesPath = () => {
+  // If running on Windows and trying to access WSL path
+  if (process.platform === 'win32') {
+    // Try to check if WSL Hermes path exists for the user
+    const wslPath = '\\\\wsl$\\Ubuntu-20.04\\home\\zlpoot\\.hermes'
+    if (fs.existsSync(wslPath)) {
+      return wslPath
+    }
+  }
+  
+  // Default to standard OS homedir
   return path.join(os.homedir(), '.hermes')
 }
 
