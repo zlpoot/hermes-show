@@ -65,6 +65,9 @@ import { Terminal, Trash2, Filter, Pause, Play } from 'lucide-vue-next'
 const logContainer = ref<HTMLElement | null>(null)
 const isPaused = ref(false)
 
+const { data } = await useFetch('/api/logs')
+const logs = ref(data.value?.logs || [])
+
 const getLogColor = (level: string) => {
   switch(level) {
     case 'ERROR': return 'text-red-400'
@@ -85,19 +88,6 @@ const getLevelBg = (level: string) => {
   }
 }
 
-const logs = ref([
-  { time: '14:30:01', level: 'INFO', source: 'Core', message: 'Starting Hermes Agent v0.8.0...' },
-  { time: '14:30:02', level: 'INFO', source: 'Config', message: 'Loaded configuration from ~/.hermes/config.yaml' },
-  { time: '14:30:02', level: 'SUCCESS', source: 'Provider', message: 'Connected to OpenRouter API successfully.' },
-  { time: '14:30:03', level: 'INFO', source: 'Gateway', message: 'Initializing messaging adapters...' },
-  { time: '14:30:05', level: 'SUCCESS', source: 'Telegram', message: 'Telegram bot connected. Listening for messages.' },
-  { time: '14:30:06', level: 'SUCCESS', source: 'Discord', message: 'Discord gateway connected.' },
-  { time: '14:30:08', level: 'INFO', source: 'Cron', message: 'Found 3 scheduled jobs. Starting scheduler.' },
-  { time: '14:35:12', level: 'DEBUG', source: 'Memory', message: 'Compacting context history for session sess-a1b2...' },
-  { time: '14:40:00', level: 'WARN', source: 'Tool', message: 'Timeout executing mcp_server_sync. Retrying (1/3)...' },
-  { time: '14:40:02', level: 'SUCCESS', source: 'Tool', message: 'mcp_server_sync executed successfully on retry.' },
-])
-
 const clearLogs = () => {
   logs.value = []
 }
@@ -117,30 +107,38 @@ const scrollToBottom = () => {
 onMounted(() => {
   scrollToBottom()
   
-  // Mock live log updates
-  intervalId = setInterval(() => {
+  // Polling logs every 3 seconds
+  intervalId = setInterval(async () => {
     if (isPaused.value) return
     
-    const now = new Date()
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
-    
-    const mockMessages = [
-      { level: 'INFO', source: 'Cron', message: 'Job "Daily Backup" running.' },
-      { level: 'DEBUG', source: 'Agent', message: 'Evaluating tool response.' },
-      { level: 'INFO', source: 'Telegram', message: 'Received new message from user @admin.' },
-      { level: 'SUCCESS', source: 'Memory', message: 'Skill generated from recent conversation.' }
-    ]
-    
-    const randomMsg = mockMessages[Math.floor(Math.random() * mockMessages.length)]
-    
-    logs.value.push({
-      time: timeStr,
-      ...randomMsg
-    })
-    
-    // Keep max 100 logs
-    if (logs.value.length > 100) {
-      logs.value.shift()
+    if (data.value?.isRealHermesConnected) {
+      const { data: newData } = await useFetch('/api/logs')
+      if (newData.value?.logs) {
+        // Simple append strategy (in real app, we should diff or track last line)
+        logs.value = newData.value.logs
+      }
+    } else {
+      const now = new Date()
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+      
+      const mockMessages = [
+        { level: 'INFO', source: 'Cron', message: 'Job "Daily Backup" running.' },
+        { level: 'DEBUG', source: 'Agent', message: 'Evaluating tool response.' },
+        { level: 'INFO', source: 'Telegram', message: 'Received new message from user @admin.' },
+        { level: 'SUCCESS', source: 'Memory', message: 'Skill generated from recent conversation.' }
+      ]
+      
+      const randomMsg = mockMessages[Math.floor(Math.random() * mockMessages.length)]
+      
+      logs.value.push({
+        time: timeStr,
+        ...randomMsg
+      })
+      
+      // Keep max 100 logs
+      if (logs.value.length > 100) {
+        logs.value.shift()
+      }
     }
     
     nextTick(() => scrollToBottom())

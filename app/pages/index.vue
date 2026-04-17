@@ -1,5 +1,17 @@
 <template>
   <div class="space-y-6">
+    <div v-if="data?.isRealHermesConnected" class="bg-primary/20 text-primary border border-primary/30 p-3 rounded-xl flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+        <span class="text-sm font-medium">已成功接入本地 Hermes Agent</span>
+      </div>
+    </div>
+    <div v-else class="bg-amber-500/10 text-amber-500 border border-amber-500/30 p-3 rounded-xl flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-medium">当前显示为 Mock 数据 (未检测到 ~/.hermes 目录或 state.db)</span>
+      </div>
+    </div>
+
     <!-- Stat Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <div v-for="(stat, index) in stats" :key="index" class="glass-panel p-6 flex flex-col justify-between">
@@ -81,48 +93,56 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Activity, Cpu, Coins, Network, BarChart2, Plus } from 'lucide-vue-next'
 
-const stats = [
-  { 
-    title: '今日 Tokens', 
-    value: '1.24M', 
-    trend: 12.5, 
-    icon: Coins,
-    iconBg: 'bg-amber-500/10',
-    iconColor: 'text-amber-500'
-  },
-  { 
-    title: '系统 CPU 负载', 
-    value: '18.4%', 
-    trend: -2.1, 
-    icon: Cpu,
-    iconBg: 'bg-primary/10',
-    iconColor: 'text-primary'
-  },
-  { 
-    title: '活跃子 Agent', 
-    value: '4', 
-    trend: 0, 
-    icon: Network,
-    iconBg: 'bg-secondary/10',
-    iconColor: 'text-secondary'
-  },
-  { 
-    title: 'API 请求延迟', 
-    value: '245ms', 
-    trend: -15.4, 
-    icon: Activity,
-    iconBg: 'bg-purple-500/10',
-    iconColor: 'text-purple-500'
-  }
-]
+const { data } = await useFetch('/api/dashboard')
 
-const activeTasks = [
-  { id: 1, name: '数据备份到 S3 (Cron)', agent: 'sys-admin-01', platform: 'Background', time: '10:30 AM' },
-  { id: 2, name: '总结 GitHub Issues', agent: 'research-bot', platform: 'Telegram', time: '11:15 AM' },
-  { id: 3, name: '训练轨迹压缩 (MiMo v2)', agent: 'hermes-core', platform: 'Local', time: '11:42 AM' },
-]
+const stats = computed(() => {
+  const d = data.value?.stats || {
+    todayTokens: '0',
+    cpuLoad: '0%',
+    activeAgents: 0,
+    latency: '0ms'
+  }
+  
+  return [
+    { 
+      title: '今日 Tokens', 
+      value: d.todayTokens, 
+      trend: 12.5, 
+      icon: Coins,
+      iconBg: 'bg-amber-500/10',
+      iconColor: 'text-amber-500'
+    },
+    { 
+      title: '系统 CPU 负载', 
+      value: d.cpuLoad, 
+      trend: -2.1, 
+      icon: Cpu,
+      iconBg: 'bg-primary/10',
+      iconColor: 'text-primary'
+    },
+    { 
+      title: '活跃子 Agent', 
+      value: d.activeAgents, 
+      trend: 0, 
+      icon: Network,
+      iconBg: 'bg-secondary/10',
+      iconColor: 'text-secondary'
+    },
+    { 
+      title: 'API 请求延迟', 
+      value: d.latency, 
+      trend: -15.4, 
+      icon: Activity,
+      iconBg: 'bg-purple-500/10',
+      iconColor: 'text-purple-500'
+    }
+  ]
+})
+
+const activeTasks = computed(() => data.value?.activeTasks || [])
 </script>
 
 <style scoped>
