@@ -88,6 +88,11 @@ export default defineEventHandler(async (event) => {
       } catch(e) { 
         // Fallback using raw query if Prisma schema validation fails for some reason
         try {
+          const countResult: any[] = await prisma.$queryRaw`SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NULL`
+          if (countResult && countResult.length > 0) {
+            stats.activeAgents = Number(countResult[0].count)
+          }
+          
           const fallbackTasks: any[] = await prisma.$queryRaw`SELECT id, title, 'Local' as source_platform, started_at FROM sessions WHERE ended_at IS NULL LIMIT 10`
           activeTasks = fallbackTasks.map((t: any) => {
             let parsedTime = 'Unknown Time'

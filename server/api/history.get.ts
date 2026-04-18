@@ -9,9 +9,21 @@ export default defineEventHandler(async (event) => {
     try {
       if (query.id) {
         // Fetch detailed session
-        const sessionRow = await prisma.session.findUnique({
-          where: { id: String(query.id) }
-        })
+        let sessionRow = null;
+        try {
+          sessionRow = await prisma.session.findUnique({
+            where: { id: String(query.id) }
+          })
+        } catch (err) {
+          // Fallback if schema validation fails (e.g. missing source_platform)
+          try {
+            const fallbackRows: any[] = await prisma.$queryRaw`SELECT id, title, 'Local' as source_platform, started_at, ended_at, input_tokens, output_tokens FROM sessions WHERE id = ${String(query.id)}`
+            if (fallbackRows && fallbackRows.length > 0) {
+              sessionRow = fallbackRows[0]
+            }
+          } catch (e) {}
+        }
+        
         if (sessionRow) {
           let messages: any[] = []
           try {
@@ -19,7 +31,12 @@ export default defineEventHandler(async (event) => {
               where: { session_id: String(query.id) },
               orderBy: { timestamp: 'asc' }
             })
-          } catch (e) {}
+          } catch (e) {
+            // Fallback if schema validation fails on message model (e.g. missing tool_name)
+            try {
+              messages = await prisma.$queryRaw`SELECT session_id, timestamp, role, content FROM messages WHERE session_id = ${String(query.id)} ORDER BY timestamp ASC`
+            } catch (err) {}
+          }
           return {
             session: sessionRow,
             messages,

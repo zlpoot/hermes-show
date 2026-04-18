@@ -26,3 +26,5 @@ logs
 .pnpm-store
 node_modules
 .nuxt
+
+/app/generated/prisma
