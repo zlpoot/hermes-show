@@ -15,19 +15,30 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // In SQLite, if FOREIGN KEY constraints are enabled, deleting the session might fail if we don't delete messages first.
-    // However, if Prisma deleteMany fails, the raw delete might also fail if not executed in the same transaction or if PRAGMA foreign_keys = ON is strictly enforced.
-    // We can try to disable foreign key checks temporarily if needed, or simply ensure we catch the error gracefully.
-    
-    // First, try to execute raw SQL to delete messages, ignoring errors if table doesn't exist
+    // 1. Dynamically find all tables that have a foreign key referencing 'sessions'
+    // and delete the child records first.
     try {
-      const placeholders = ids.map(() => '?').join(',')
-      await prisma.$executeRawUnsafe(`DELETE FROM messages WHERE session_id IN (${placeholders})`, ...ids)
+      const intIds = ids.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id))
+      const combinedIds = [...ids, ...intIds]
+      const placeholders = combinedIds.map(() => '?').join(',')
+
+      const tables: any[] = await prisma.$queryRaw`SELECT name FROM sqlite_master WHERE type='table';`
+      for (const table of tables) {
+        const tableName = table.name
+        const fks: any[] = await prisma.$queryRawUnsafe(`PRAGMA foreign_key_list("${tableName}");`)
+        
+        for (const fk of fks) {
+          if (fk.table === 'sessions' || fk.table === 'session') {
+            const childColumn = fk.from
+            await prisma.$executeRawUnsafe(`DELETE FROM "${tableName}" WHERE "${childColumn}" IN (${placeholders})`, ...combinedIds)
+          }
+        }
+      }
     } catch (e) {
-      console.log('Failed to delete messages via raw SQL, might not exist or schema mismatch', e)
+      console.log('Failed to dynamically delete child records', e)
     }
 
-    // Try Prisma deleteMany for messages just in case
+    // Try Prisma deleteMany for messages just in case (if the dynamic approach missed it)
     try {
       await prisma.message.deleteMany({
         where: { session_id: { in: ids } }
@@ -36,22 +47,13 @@ export default defineEventHandler(async (event) => {
 
     // Now delete sessions via raw SQL
     try {
-      const placeholders = ids.map(() => '?').join(',')
-      await prisma.$executeRawUnsafe(`DELETE FROM sessions WHERE id IN (${placeholders})`, ...ids)
+      const intIds = ids.map((id: string) => parseInt(id, 10)).filter((id: number) => !isNaN(id))
+      const combinedIds = [...ids, ...intIds]
+      const placeholders = combinedIds.map(() => '?').join(',')
+      await prisma.$executeRawUnsafe(`DELETE FROM sessions WHERE id IN (${placeholders})`, ...combinedIds)
     } catch (e) {
       console.log('Failed to delete sessions via raw SQL', e)
-      // If raw delete failed, try to disable FK checks, delete, and re-enable
-      try {
-        await prisma.$executeRawUnsafe('PRAGMA foreign_keys = OFF;')
-        const placeholders = ids.map(() => '?').join(',')
-        await prisma.$executeRawUnsafe(`DELETE FROM sessions WHERE id IN (${placeholders})`, ...ids)
-        await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON;')
-      } catch (err) {
-        // Ultimate fallback to Prisma deleteMany
-        await prisma.session.deleteMany({
-          where: { id: { in: ids } }
-        })
-      }
+      throw new Error('Failed to delete sessions due to database constraints.')
     }
 
     return { success: true, count: ids.length }
