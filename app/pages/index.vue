@@ -59,10 +59,13 @@
         </div>
         
         <div class="flex-1 overflow-y-auto space-y-4 pr-2">
-          <div v-for="task in activeTasks" :key="task.id" class="p-4 rounded-xl bg-muted/30 border border-card-border hover:border-primary/30 transition-colors">
+          <NuxtLink v-for="task in activeTasks" :key="task.id" :to="`/history?id=${task.id}`" class="block p-4 rounded-xl bg-muted/30 border border-card-border hover:border-primary/50 hover:bg-muted/50 transition-all cursor-pointer group">
             <div class="flex justify-between items-start mb-2">
-              <h4 class="font-medium text-sm">{{ task.name }}</h4>
-              <span class="text-xs font-mono text-muted-foreground">{{ task.time }}</span>
+              <h4 class="font-medium text-sm group-hover:text-primary transition-colors">{{ task.name }}</h4>
+              <span class="text-xs font-mono text-muted-foreground flex items-center gap-1">
+                {{ task.time }}
+                <ArrowRight size="12" class="opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+              </span>
             </div>
             <div class="flex items-center gap-2 mb-3">
               <span class="text-xs px-2 py-0.5 rounded-md bg-background border border-card-border">{{ task.agent }}</span>
@@ -74,7 +77,7 @@
                 <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite] w-full" style="background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);"></div>
               </div>
             </div>
-          </div>
+          </NuxtLink>
         </div>
         
         <button class="mt-4 w-full py-2 border border-dashed border-card-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-2">
@@ -88,7 +91,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Activity, Cpu, Coins, Network, BarChart2, Plus } from 'lucide-vue-next'
+import { Activity, Cpu, Coins, Network, BarChart2, Plus, ArrowRight } from 'lucide-vue-next'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Filler } from 'chart.js'
 

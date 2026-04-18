@@ -105,20 +105,36 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSquare } from 'lucide-vue-next'
+
+const route = useRoute()
+const router = useRouter()
 
 const { data } = await useFetch('/api/history')
 
 const sessions = computed(() => data.value?.sessions || [])
-const activeSession = ref(sessions.value[0]?.id || '')
+const activeSession = ref((route.query.id as string) || sessions.value[0]?.id || '')
 const activeSessionDetail = ref(null)
 
 watch(activeSession, async (newId) => {
   if (newId) {
+    // Update URL to reflect selected session (without page reload)
+    if (route.query.id !== newId) {
+      router.replace({ query: { ...route.query, id: newId } })
+    }
+    
     const { data: detailData } = await useFetch(`/api/history?id=${newId}`)
     activeSessionDetail.value = detailData.value
   }
 }, { immediate: true })
+
+// Also react to external URL changes (e.g. browser back button)
+watch(() => route.query.id, (newId) => {
+  if (newId && newId !== activeSession.value) {
+    activeSession.value = newId as string
+  }
+})
 
 const currentSession = computed(() => {
   return sessions.value.find(s => s.id === activeSession.value)
