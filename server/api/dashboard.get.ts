@@ -1,5 +1,6 @@
 import { defineEventHandler } from 'h3'
 import { getHermesDB } from '../utils/hermes'
+import os from 'node:os'
 
 export default defineEventHandler(async (event) => {
   const db = getHermesDB()
@@ -13,6 +14,7 @@ export default defineEventHandler(async (event) => {
   }
   
   let activeTasks = []
+  let chartData = { labels: [], datasets: [] }
 
   if (db) {
     try {
@@ -27,6 +29,31 @@ export default defineEventHandler(async (event) => {
           const totalTokensRow = db.prepare("SELECT SUM(input_tokens + output_tokens) as total FROM sessions WHERE started_at > datetime('now', '-1 day')").get() as any
           if (totalTokensRow && totalTokensRow.total) {
             stats.todayTokens = (totalTokensRow.total / 1000).toFixed(1) + 'K'
+          }
+          
+          // Get tokens for the last 7 days for the chart
+          const tokenTrend = db.prepare(`
+            SELECT date(started_at) as date, SUM(input_tokens + output_tokens) as total 
+            FROM sessions 
+            WHERE started_at > datetime('now', '-7 days') 
+            GROUP BY date(started_at) 
+            ORDER BY date(started_at) ASC
+          `).all() as any[]
+          
+          if (tokenTrend && tokenTrend.length > 0) {
+            chartData = {
+              labels: tokenTrend.map(t => t.date),
+              datasets: [
+                {
+                  label: 'Tokens',
+                  data: tokenTrend.map(t => t.total),
+                  borderColor: '#10b981',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  fill: true,
+                  tension: 0.4
+                }
+              ]
+            }
           }
         } catch(e) { /* ignore missing columns */ }
         
@@ -49,12 +76,24 @@ export default defineEventHandler(async (event) => {
         } catch(e) { /* ignore missing columns */ }
       }
       
-      // If no active tasks found in DB, we'll return empty array rather than mock data
-      // since we are connected to the real DB
+      // Calculate real CPU load based on OS module
+      const cpus = os.cpus()
+      let idle = 0
+      let total = 0
+      for (let cpu of cpus) {
+        for (let type in cpu.times) {
+          total += cpu.times[type]
+        }
+        idle += cpu.times.idle
+      }
+      const cpuUsage = 100 - ~~(100 * idle / total)
+      stats.cpuLoad = `${cpuUsage}%`
       
-      // Get some system stats if possible
-      stats.cpuLoad = (Math.random() * 30 + 10).toFixed(1) + '%' // Mock CPU for now as it's not in DB
-      stats.latency = Math.floor(Math.random() * 200 + 50) + 'ms' // Mock latency
+      // Simulate real API latency via simple local check
+      const start = performance.now()
+      db.prepare("SELECT 1").get()
+      const end = performance.now()
+      stats.latency = `${Math.round(end - start + 5)}ms`
       
     } catch (e) {
       console.log('Error reading from real DB', e)
@@ -73,11 +112,27 @@ export default defineEventHandler(async (event) => {
       { id: 2, name: '总结 GitHub Issues', agent: 'research-bot', platform: 'Telegram', time: '11:15 AM' },
       { id: 3, name: '训练轨迹压缩 (MiMo v2)', agent: 'hermes-core', platform: 'Local', time: '11:42 AM' },
     ]
+    
+    // Mock chart data
+    chartData = {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [
+        {
+          label: 'Tokens',
+          data: [120000, 190000, 150000, 250000, 220000, 300000, 280000],
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          fill: true,
+          tension: 0.4
+        }
+      ]
+    }
   }
   
   return {
     stats,
     activeTasks,
+    chartData,
     isRealHermesConnected: !!db
   }
 })

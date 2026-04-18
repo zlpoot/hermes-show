@@ -39,18 +39,12 @@
       <div class="lg:col-span-2 glass-panel p-6">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-lg font-semibold">Tokens 消耗趋势 (近7天)</h3>
-          <select class="bg-muted border border-card-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
-            <option>本周</option>
-            <option>本月</option>
-            <option>全部</option>
-          </select>
         </div>
-        <div class="h-72 w-full flex items-center justify-center border border-dashed border-card-border rounded-xl bg-card/30">
-          <!-- Placeholder for chart, in a real app use vue-chartjs -->
-          <div class="flex flex-col items-center text-muted-foreground">
+        <div class="h-72 w-full flex items-center justify-center border border-card-border rounded-xl bg-card/30 p-4">
+          <Line v-if="chartData && chartData.labels && chartData.labels.length > 0" :data="chartData" :options="chartOptions" />
+          <div v-else class="flex flex-col items-center text-muted-foreground">
             <BarChart2 size="48" class="mb-4 opacity-50" />
-            <p>折线图表渲染区域</p>
-            <p class="text-xs mt-2">基于 vue-chartjs</p>
+            <p>暂无图表数据</p>
           </div>
         </div>
       </div>
@@ -95,8 +89,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Activity, Cpu, Coins, Network, BarChart2, Plus } from 'lucide-vue-next'
+import { Line } from 'vue-chartjs'
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Filler } from 'chart.js'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Filler)
 
 const { data } = await useFetch('/api/dashboard')
+
+const chartData = computed(() => data.value?.chartData)
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false }
+  },
+  scales: {
+    x: { grid: { display: false } },
+    y: { grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+  }
+}
 
 const stats = computed(() => {
   const d = data.value?.stats || {
