@@ -48,11 +48,27 @@ export default defineEventHandler(async (event) => {
           }
           
           return {
-            sessions: sessions.map((s: any) => ({
-              ...s,
-              date: s.date ? new Date(s.date).toLocaleString() : 'Unknown Date',
-              tokens: s.tokens ? s.tokens.toLocaleString() : '0'
-            })),
+            sessions: sessions.map((s: any) => {
+              let parsedDate = 'Unknown Date'
+              if (s.date) {
+                // Check if it's a unix timestamp (number or string of numbers)
+                const isNumeric = !isNaN(Number(s.date))
+                if (isNumeric) {
+                  // If it's in seconds (typical for python/sqlite unix epoch), multiply by 1000 for JS
+                  const ts = Number(s.date)
+                  parsedDate = new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleString()
+                } else {
+                  // Otherwise parse as normal ISO string
+                  parsedDate = new Date(s.date).toLocaleString()
+                }
+              }
+              
+              return {
+                ...s,
+                date: parsedDate,
+                tokens: s.tokens ? s.tokens.toLocaleString() : '0'
+              }
+            }),
             isRealHermesConnected: true
           }
         }

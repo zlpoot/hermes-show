@@ -73,13 +73,26 @@ export default defineEventHandler(async (event) => {
             activeTasksData = db.prepare("SELECT id, title as name, 'Local' as platform, started_at as time FROM sessions WHERE ended_at IS NULL LIMIT 10").all() as any[]
           }
           
-          activeTasks = activeTasksData.map(t => ({
-            id: t.id,
-            name: t.name || 'Unnamed Task',
-            agent: 'hermes-core',
-            platform: t.platform || 'Local',
-            time: new Date(t.time).toLocaleTimeString()
-          }))
+          activeTasks = activeTasksData.map(t => {
+            let parsedTime = 'Unknown Time'
+            if (t.time) {
+              const isNumeric = !isNaN(Number(t.time))
+              if (isNumeric) {
+                const ts = Number(t.time)
+                parsedTime = new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleTimeString()
+              } else {
+                parsedTime = new Date(t.time).toLocaleTimeString()
+              }
+            }
+            
+            return {
+              id: t.id,
+              name: t.name || 'Unnamed Task',
+              agent: 'hermes-core',
+              platform: t.platform || 'Local',
+              time: parsedTime
+            }
+          })
         } catch(e) { /* ignore missing columns */ }
       }
       
