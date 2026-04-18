@@ -1,4 +1,5 @@
 import { defineEventHandler, getQuery } from 'h3'
+import { getHermesLogs } from '../utils/hermes'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)

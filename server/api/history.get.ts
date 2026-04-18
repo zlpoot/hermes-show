@@ -1,4 +1,5 @@
 import { defineEventHandler, getQuery } from 'h3'
+import { getHermesDB } from '../utils/hermes'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -6,30 +7,54 @@ export default defineEventHandler(async (event) => {
 
   if (db) {
     try {
-      if (query.id) {
-        // Fetch detailed session
-        const sessionRow = db.prepare('SELECT * FROM sessions WHERE id = ?').get(query.id)
-        if (sessionRow) {
-          const messages = db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp ASC').all(query.id)
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[]
+      const tableNames = tables.map(t => t.name)
+      
+      if (tableNames.includes('sessions')) {
+        if (query.id) {
+          // Fetch detailed session
+          const sessionRow = db.prepare('SELECT * FROM sessions WHERE id = ?').get(query.id)
+          if (sessionRow) {
+            let messages = []
+            if (tableNames.includes('messages')) {
+              messages = db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp ASC').all(query.id)
+            }
+            return {
+              session: sessionRow,
+              messages,
+              isRealHermesConnected: true
+            }
+          }
+        } else {
+          // Fetch list of sessions
+          const search = query.q ? `%${query.q}%` : '%'
+          // Add try-catch for tokens columns as they might be different in actual schema
+          let sessions = []
+          try {
+            sessions = db.prepare(`
+              SELECT id, title, source_platform as platform, started_at as date, (input_tokens + output_tokens) as tokens 
+              FROM sessions 
+              WHERE title LIKE ? 
+              ORDER BY started_at DESC LIMIT 50
+            `).all(search)
+          } catch(e) {
+            // Fallback query if tokens columns don't exist
+            sessions = db.prepare(`
+              SELECT id, title, source_platform as platform, started_at as date, 0 as tokens 
+              FROM sessions 
+              WHERE title LIKE ? 
+              ORDER BY started_at DESC LIMIT 50
+            `).all(search)
+          }
+          
           return {
-            session: sessionRow,
-            messages,
+            sessions: sessions.map((s: any) => ({
+              ...s,
+              date: s.date ? new Date(s.date).toLocaleString() : 'Unknown Date',
+              tokens: s.tokens ? s.tokens.toLocaleString() : '0'
+            })),
             isRealHermesConnected: true
           }
-        }
-      } else {
-        // Fetch list of sessions
-        const search = query.q ? `%${query.q}%` : '%'
-        const sessions = db.prepare(`
-          SELECT id, title, source_platform as platform, started_at as date, (input_tokens + output_tokens) as tokens 
-          FROM sessions 
-          WHERE title LIKE ? 
-          ORDER BY started_at DESC LIMIT 50
-        `).all(search)
-        
-        return {
-          sessions,
-          isRealHermesConnected: true
         }
       }
     } catch (e) {
