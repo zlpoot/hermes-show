@@ -44,7 +44,11 @@ export const getHermesDB = () => {
       let url = `file:${dbPath.replace(/\\/g, '/')}`
       
       prisma = new PrismaClient({
-        datasourceUrl: url
+        datasources: {
+          db: {
+            url: url
+          }
+        }
       })
       return prisma
     }
