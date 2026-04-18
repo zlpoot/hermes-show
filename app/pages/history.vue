@@ -8,10 +8,16 @@
             <History size="18" class="text-primary" />
             会话检索 (FTS5)
           </h3>
-          <button v-if="selectedIds.length > 0" @click="deleteSelected" :disabled="isDeleting" class="text-red-500 hover:bg-red-500/10 p-1.5 rounded flex items-center gap-1 text-xs transition-colors">
-            <Trash2 size="14" />
-            {{ isDeleting ? '删除中...' : `删除 (${selectedIds.length})` }}
-          </button>
+          <div class="flex items-center gap-2">
+            <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors" v-if="sessions.length > 0">
+              <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="w-3.5 h-3.5 rounded border-card-border text-primary focus:ring-primary cursor-pointer" />
+              全选
+            </label>
+            <button v-if="selectedIds.length > 0" @click="deleteSelected" :disabled="isDeleting" class="text-red-500 hover:bg-red-500/10 p-1.5 rounded flex items-center gap-1 text-xs transition-colors">
+              <Trash2 size="14" />
+              {{ isDeleting ? '删除中...' : `删除 (${selectedIds.length})` }}
+            </button>
+          </div>
         </div>
         <div class="relative mt-4">
           <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -130,6 +136,19 @@ const activeSessionDetail = ref(null)
 
 const selectedIds = ref<string[]>([])
 const isDeleting = ref(false)
+
+const isAllSelected = computed(() => {
+  return sessions.value.length > 0 && selectedIds.value.length === sessions.value.length
+})
+
+const toggleSelectAll = (e: Event) => {
+  const checked = (e.target as HTMLInputElement).checked
+  if (checked) {
+    selectedIds.value = sessions.value.map(s => s.id)
+  } else {
+    selectedIds.value = []
+  }
+}
 
 const deleteSelected = async () => {
   if (selectedIds.value.length === 0) return
