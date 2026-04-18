@@ -43,11 +43,13 @@ export const getHermesDB = () => {
       // Handle WSL UNC paths correctly
       let url = `file:${dbPath.replace(/\\/g, '/')}`
       
-      // For Prisma 7+ with earlyAccess, pass the file URL via the adapter options if possible
-      // or directly use the process.env trick for backwards compatibility with the generated client
-      process.env.DATABASE_URL = url;
-      
-      prisma = new PrismaClient()
+      prisma = new PrismaClient({
+        datasources: {
+          db: {
+            url: url
+          }
+        }
+      })
       return prisma
     }
   } catch (e) {
