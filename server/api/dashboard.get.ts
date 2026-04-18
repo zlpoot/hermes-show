@@ -65,7 +65,14 @@ export default defineEventHandler(async (event) => {
           }
           
           // Get active tasks list
-          const activeTasksData = db.prepare("SELECT id, title as name, source_platform as platform, started_at as time FROM sessions WHERE ended_at IS NULL LIMIT 10").all() as any[]
+          let activeTasksData = []
+          try {
+            activeTasksData = db.prepare("SELECT id, title as name, source_platform as platform, started_at as time FROM sessions WHERE ended_at IS NULL LIMIT 10").all() as any[]
+          } catch(e) {
+            // Fallback if source_platform column doesn't exist
+            activeTasksData = db.prepare("SELECT id, title as name, 'Local' as platform, started_at as time FROM sessions WHERE ended_at IS NULL LIMIT 10").all() as any[]
+          }
+          
           activeTasks = activeTasksData.map(t => ({
             id: t.id,
             name: t.name || 'Unnamed Task',

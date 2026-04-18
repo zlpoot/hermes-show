@@ -38,9 +38,9 @@ export default defineEventHandler(async (event) => {
               ORDER BY started_at DESC LIMIT 50
             `).all(search)
           } catch(e) {
-            // Fallback query if tokens columns don't exist
+            // Fallback query if tokens columns or source_platform don't exist
             sessions = db.prepare(`
-              SELECT id, title, source_platform as platform, started_at as date, 0 as tokens 
+              SELECT id, title, 'Local' as platform, started_at as date, 0 as tokens 
               FROM sessions 
               WHERE title LIKE ? 
               ORDER BY started_at DESC LIMIT 50
