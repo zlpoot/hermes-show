@@ -47,9 +47,7 @@ export const getHermesDB = () => {
       // or directly use the process.env trick for backwards compatibility with the generated client
       process.env.DATABASE_URL = url;
       
-      prisma = new PrismaClient({
-        url: url
-      } as any)
+      prisma = new PrismaClient()
       return prisma
     }
   } catch (e) {
