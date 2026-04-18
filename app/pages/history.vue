@@ -3,10 +3,16 @@
     <!-- Session List -->
     <div class="w-80 glass-panel flex flex-col overflow-hidden">
       <div class="p-4 border-b border-card-border">
-        <h3 class="font-semibold flex items-center gap-2">
-          <History size="18" class="text-primary" />
-          会话检索 (FTS5)
-        </h3>
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold flex items-center gap-2">
+            <History size="18" class="text-primary" />
+            会话检索 (FTS5)
+          </h3>
+          <button v-if="selectedIds.length > 0" @click="deleteSelected" :disabled="isDeleting" class="text-red-500 hover:bg-red-500/10 p-1.5 rounded flex items-center gap-1 text-xs transition-colors">
+            <Trash2 size="14" />
+            {{ isDeleting ? '删除中...' : `删除 (${selectedIds.length})` }}
+          </button>
+        </div>
         <div class="relative mt-4">
           <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input type="text" placeholder="搜索历史对话..." class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors">
@@ -14,16 +20,21 @@
       </div>
       
       <div class="flex-1 overflow-y-auto p-2 space-y-1">
-        <button v-for="session in sessions" :key="session.id"
-          @click="activeSession = session.id"
-          class="w-full text-left p-3 rounded-lg transition-colors border border-transparent hover:bg-muted/50"
+        <div v-for="session in sessions" :key="session.id"
+          class="w-full flex items-center text-left p-1 rounded-lg transition-colors border border-transparent hover:bg-muted/50 group"
           :class="activeSession === session.id ? 'bg-primary/10 border-primary/30' : ''">
-          <h4 class="text-sm font-medium line-clamp-1" :class="activeSession === session.id ? 'text-primary' : 'text-foreground'">{{ session.title }}</h4>
-          <div class="flex items-center justify-between mt-2">
-            <span class="text-xs text-muted-foreground">{{ session.date }}</span>
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-card-border/50 text-muted-foreground">{{ session.platform }}</span>
+          
+          <!-- Checkbox for batch selection -->
+          <input type="checkbox" :value="session.id" v-model="selectedIds" class="mx-2 w-4 h-4 cursor-pointer rounded border-card-border text-primary focus:ring-primary" />
+          
+          <div class="flex-1 overflow-hidden cursor-pointer p-2" @click="activeSession = session.id">
+            <h4 class="text-sm font-medium line-clamp-1" :class="activeSession === session.id ? 'text-primary' : 'text-foreground'">{{ session.title }}</h4>
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-xs text-muted-foreground">{{ session.date }}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-card-border/50 text-muted-foreground">{{ session.platform }}</span>
+            </div>
           </div>
-        </button>
+        </div>
       </div>
     </div>
 
@@ -106,16 +117,54 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSquare } from 'lucide-vue-next'
+import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSquare, Trash2 } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
 
-const { data } = await useFetch('/api/history')
+const { data, refresh } = await useFetch('/api/history')
 
 const sessions = computed(() => data.value?.sessions || [])
 const activeSession = ref((route.query.id as string) || sessions.value[0]?.id || '')
 const activeSessionDetail = ref(null)
+
+const selectedIds = ref<string[]>([])
+const isDeleting = ref(false)
+
+const deleteSelected = async () => {
+  if (selectedIds.value.length === 0) return
+  if (!confirm(`确定要删除选定的 ${selectedIds.value.length} 个对话吗？`)) return
+
+  isDeleting.value = true
+  try {
+    const res = await $fetch('/api/history', {
+      method: 'DELETE',
+      body: { ids: selectedIds.value }
+    })
+    
+    if ((res as any).success) {
+      // Clear selection
+      const idsToDelete = [...selectedIds.value]
+      selectedIds.value = []
+      
+      // If the active session is deleted, reset it
+      if (idsToDelete.includes(activeSession.value)) {
+        activeSession.value = ''
+        router.replace({ query: { ...route.query, id: undefined } })
+      }
+      
+      // Refresh session list
+      await refresh()
+    } else {
+      alert('删除失败: ' + ((res as any).message || '未知错误'))
+    }
+  } catch (e) {
+    console.error('Delete failed:', e)
+    alert('删除过程中出现异常，请重试')
+  } finally {
+    isDeleting.value = false
+  }
+}
 
 watch(activeSession, async (newId) => {
   if (newId) {
