@@ -22,5 +22,17 @@ export default defineNuxtConfig({
         { name: 'description', content: 'Hermes Agent Web Visualization Dashboard' }
       ]
     }
+  },
+  vite: {
+    optimizeDeps: {
+      include: [
+        'vue',
+        'vue-router',
+        'chart.js',
+        'vue-chartjs',
+        'lucide-vue-next',
+        '@prisma/client'
+      ]
+    }
   }
 })
