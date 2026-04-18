@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import yaml from 'yaml'
-import Database from 'better-sqlite3'
+import { PrismaClient } from '@prisma/client'
 
 export const getHermesPath = () => {
   // If running on Windows and trying to access WSL path
@@ -31,14 +31,25 @@ export const getHermesConfig = () => {
   return null
 }
 
+let prisma: PrismaClient | null = null
+
 export const getHermesDB = () => {
+  if (prisma) return prisma
+
   const dbPath = path.join(getHermesPath(), 'state.db')
   try {
     if (fs.existsSync(dbPath)) {
-      return new Database(dbPath, { readonly: true })
+      // Create a valid file URL for Prisma
+      // Handle WSL UNC paths correctly
+      let url = `file:${dbPath.replace(/\\/g, '/')}`
+      
+      prisma = new PrismaClient({
+        datasourceUrl: url
+      })
+      return prisma
     }
   } catch (e) {
-    console.error('Failed to connect to state.db', e)
+    console.error('Failed to connect to state.db with Prisma', e)
   }
   return null
 }

@@ -3,82 +3,83 @@ import { getHermesDB } from '../utils/hermes'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const db = getHermesDB()
+  const prisma = getHermesDB()
 
-  if (db) {
+  if (prisma) {
     try {
-      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[]
-      const tableNames = tables.map(t => t.name)
-      
-      if (tableNames.includes('sessions')) {
-        if (query.id) {
-          // Fetch detailed session
-          const sessionRow = db.prepare('SELECT * FROM sessions WHERE id = ?').get(query.id)
-          if (sessionRow) {
-            let messages = []
-            if (tableNames.includes('messages')) {
-              messages = db.prepare('SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp ASC').all(query.id)
-            }
-            return {
-              session: sessionRow,
-              messages,
-              isRealHermesConnected: true
-            }
-          }
-        } else {
-          // Fetch list of sessions
-          const search = query.q ? `%${query.q}%` : '%'
-          // Add try-catch for tokens columns as they might be different in actual schema
-          let sessions = []
+      if (query.id) {
+        // Fetch detailed session
+        const sessionRow = await prisma.session.findUnique({
+          where: { id: String(query.id) }
+        })
+        if (sessionRow) {
+          let messages: any[] = []
           try {
-            sessions = db.prepare(`
-              SELECT id, title, source_platform as platform, started_at as date, (input_tokens + output_tokens) as tokens 
-              FROM sessions 
-              WHERE title LIKE ? 
-              ORDER BY started_at DESC LIMIT 50
-            `).all(search)
-          } catch(e) {
-            // Fallback query if tokens columns or source_platform don't exist
-            sessions = db.prepare(`
-              SELECT id, title, 'Local' as platform, started_at as date, 0 as tokens 
-              FROM sessions 
-              WHERE title LIKE ? 
-              ORDER BY started_at DESC LIMIT 50
-            `).all(search)
-          }
-          
+            messages = await prisma.message.findMany({
+              where: { session_id: String(query.id) },
+              orderBy: { timestamp: 'asc' }
+            })
+          } catch (e) {}
           return {
-            sessions: sessions.map((s: any) => {
-              let parsedDate = 'Unknown Date'
-              if (s.date) {
-                // Check if it's a unix timestamp (number or string of numbers)
-                const isNumeric = !isNaN(Number(s.date))
-                if (isNumeric) {
-                  // If it's in seconds (typical for python/sqlite unix epoch), multiply by 1000 for JS
-                  const ts = Number(s.date)
-                  parsedDate = new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleString()
-                } else {
-                  // Otherwise parse as normal ISO string
-                  parsedDate = new Date(s.date).toLocaleString()
-                }
-              }
-              
-              return {
-                ...s,
-                date: parsedDate,
-                tokens: s.tokens ? s.tokens.toLocaleString() : '0'
-              }
-            }),
+            session: sessionRow,
+            messages,
             isRealHermesConnected: true
           }
         }
+      } else {
+        // Fetch list of sessions
+        const search = query.q ? `%${query.q}%` : '%'
+        // Add try-catch for tokens columns as they might be different in actual schema
+        let sessions: any[] = []
+        try {
+          sessions = await prisma.$queryRaw`
+            SELECT id, title, source_platform as platform, started_at as date, (input_tokens + output_tokens) as tokens 
+            FROM sessions 
+            WHERE title LIKE ${search} 
+            ORDER BY started_at DESC LIMIT 50
+          `
+        } catch(e) {
+          // Fallback query if tokens columns or source_platform don't exist
+          try {
+            sessions = await prisma.$queryRaw`
+              SELECT id, title, 'Local' as platform, started_at as date, 0 as tokens 
+              FROM sessions 
+              WHERE title LIKE ${search} 
+              ORDER BY started_at DESC LIMIT 50
+            `
+          } catch(err) {}
+        }
+        
+        return {
+          sessions: sessions.map((s: any) => {
+            let parsedDate = 'Unknown Date'
+            if (s.date) {
+              // Check if it's a unix timestamp (number or string of numbers)
+              const isNumeric = !isNaN(Number(s.date))
+              if (isNumeric) {
+                // If it's in seconds (typical for python/sqlite unix epoch), multiply by 1000 for JS
+                const ts = Number(s.date)
+                parsedDate = new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleString()
+              } else {
+                // Otherwise parse as normal ISO string
+                parsedDate = new Date(s.date).toLocaleString()
+              }
+            }
+            
+            return {
+              ...s,
+              date: parsedDate,
+              tokens: s.tokens ? Number(s.tokens).toLocaleString() : '0'
+            }
+          }),
+          isRealHermesConnected: true
+        }
       }
     } catch (e) {
-      console.log('Failed to fetch from DB', e)
-    } finally {
-      db.close()
+      console.log('Failed to fetch from DB with Prisma', e)
     }
   }
+
   
   // Mock data fallback
   const mockSessions = [

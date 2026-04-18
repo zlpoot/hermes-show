@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Session {
+  id              String  @id
+  title           String?
+  source_platform String?
+  started_at      String?
+  ended_at        String?
+  input_tokens    Int?
+  output_tokens   Int?
+
+  messages        Message[]
+
+  @@map("sessions")
+}
+
+model Message {
+  session_id  String
+  timestamp   String
+  role        String?
+  tool_name   String?
+  content     String?
+
+  session     Session? @relation(fields: [session_id], references: [id])
+
+  // Use a composite key because there's no guaranteed 'id' column in the Hermes messages table
+  @@id([session_id, timestamp])
+  @@map("messages")
+}

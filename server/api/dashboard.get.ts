@@ -3,7 +3,7 @@ import { getHermesDB } from '../utils/hermes'
 import os from 'node:os'
 
 export default defineEventHandler(async (event) => {
-  const db = getHermesDB()
+  const prisma = getHermesDB()
   
   // Basic mock defaults if hermes not found locally
   const stats = {
@@ -13,87 +13,102 @@ export default defineEventHandler(async (event) => {
     latency: '0ms'
   }
   
-  let activeTasks = []
-  let chartData = { labels: [], datasets: [] }
+  let activeTasks: any[] = []
+  let chartData = { labels: [] as string[], datasets: [] as any[] }
 
-  if (db) {
+  if (prisma) {
     try {
-      // Get table info to check what we're working with
-      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[]
-      const tableNames = tables.map(t => t.name)
-      
-      // If we have a sessions table
-      if (tableNames.includes('sessions')) {
-        // Get total tokens today
-        try {
-          const totalTokensRow = db.prepare("SELECT SUM(input_tokens + output_tokens) as total FROM sessions WHERE started_at > datetime('now', '-1 day')").get() as any
-          if (totalTokensRow && totalTokensRow.total) {
-            stats.todayTokens = (totalTokensRow.total / 1000).toFixed(1) + 'K'
+      // Get total tokens today via raw query because we need date functions and sum
+      try {
+        const totalTokensRow: any[] = await prisma.$queryRaw`SELECT SUM(input_tokens + output_tokens) as total FROM sessions WHERE started_at > datetime('now', '-1 day')`
+        if (totalTokensRow && totalTokensRow.length > 0 && totalTokensRow[0].total) {
+          stats.todayTokens = (Number(totalTokensRow[0].total) / 1000).toFixed(1) + 'K'
+        }
+        
+        // Get tokens for the last 7 days for the chart
+        const tokenTrend: any[] = await prisma.$queryRaw`
+          SELECT date(started_at) as date, SUM(input_tokens + output_tokens) as total 
+          FROM sessions 
+          WHERE started_at > datetime('now', '-7 days') 
+          GROUP BY date(started_at) 
+          ORDER BY date(started_at) ASC
+        `
+        
+        if (tokenTrend && tokenTrend.length > 0) {
+          chartData = {
+            labels: tokenTrend.map(t => t.date),
+            datasets: [
+              {
+                label: 'Tokens',
+                data: tokenTrend.map(t => Number(t.total)),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.4
+              }
+            ]
           }
-          
-          // Get tokens for the last 7 days for the chart
-          const tokenTrend = db.prepare(`
-            SELECT date(started_at) as date, SUM(input_tokens + output_tokens) as total 
-            FROM sessions 
-            WHERE started_at > datetime('now', '-7 days') 
-            GROUP BY date(started_at) 
-            ORDER BY date(started_at) ASC
-          `).all() as any[]
-          
-          if (tokenTrend && tokenTrend.length > 0) {
-            chartData = {
-              labels: tokenTrend.map(t => t.date),
-              datasets: [
-                {
-                  label: 'Tokens',
-                  data: tokenTrend.map(t => t.total),
-                  borderColor: '#10b981',
-                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                  fill: true,
-                  tension: 0.4
-                }
-              ]
+        }
+      } catch(e) { /* ignore missing columns or tables */ }
+      
+      // Get active agents using Prisma Client
+      try {
+        const activeCount = await prisma.session.count({
+          where: { ended_at: null }
+        })
+        stats.activeAgents = activeCount
+        
+        // Get active tasks list
+        const activeTasksData = await prisma.session.findMany({
+          where: { ended_at: null },
+          take: 10,
+          select: { id: true, title: true, source_platform: true, started_at: true }
+        })
+        
+        activeTasks = activeTasksData.map((t: any) => {
+          let parsedTime = 'Unknown Time'
+          if (t.started_at) {
+            const isNumeric = !isNaN(Number(t.started_at))
+            if (isNumeric) {
+              const ts = Number(t.started_at)
+              parsedTime = new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleTimeString()
+            } else {
+              parsedTime = new Date(t.started_at).toLocaleTimeString()
             }
           }
-        } catch(e) { /* ignore missing columns */ }
-        
-        // Get active agents
+          
+          return {
+            id: t.id,
+            name: t.title || 'Unnamed Task',
+            agent: 'hermes-core',
+            platform: t.source_platform || 'Local',
+            time: parsedTime
+          }
+        })
+      } catch(e) { 
+        // Fallback using raw query if Prisma schema validation fails for some reason
         try {
-          const activeRows = db.prepare("SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NULL").get() as any
-          if (activeRows) {
-            stats.activeAgents = activeRows.count
-          }
-          
-          // Get active tasks list
-          let activeTasksData = []
-          try {
-            activeTasksData = db.prepare("SELECT id, title as name, source_platform as platform, started_at as time FROM sessions WHERE ended_at IS NULL LIMIT 10").all() as any[]
-          } catch(e) {
-            // Fallback if source_platform column doesn't exist
-            activeTasksData = db.prepare("SELECT id, title as name, 'Local' as platform, started_at as time FROM sessions WHERE ended_at IS NULL LIMIT 10").all() as any[]
-          }
-          
-          activeTasks = activeTasksData.map(t => {
+          const fallbackTasks: any[] = await prisma.$queryRaw`SELECT id, title, 'Local' as source_platform, started_at FROM sessions WHERE ended_at IS NULL LIMIT 10`
+          activeTasks = fallbackTasks.map((t: any) => {
             let parsedTime = 'Unknown Time'
-            if (t.time) {
-              const isNumeric = !isNaN(Number(t.time))
+            if (t.started_at) {
+              const isNumeric = !isNaN(Number(t.started_at))
               if (isNumeric) {
-                const ts = Number(t.time)
+                const ts = Number(t.started_at)
                 parsedTime = new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleTimeString()
               } else {
-                parsedTime = new Date(t.time).toLocaleTimeString()
+                parsedTime = new Date(t.started_at).toLocaleTimeString()
               }
             }
-            
             return {
               id: t.id,
-              name: t.name || 'Unnamed Task',
+              name: t.title || 'Unnamed Task',
               agent: 'hermes-core',
-              platform: t.platform || 'Local',
+              platform: t.source_platform || 'Local',
               time: parsedTime
             }
           })
-        } catch(e) { /* ignore missing columns */ }
+        } catch(err) {}
       }
       
       // Calculate real CPU load based on OS module
@@ -102,7 +117,7 @@ export default defineEventHandler(async (event) => {
       let total = 0
       for (let cpu of cpus) {
         for (let type in cpu.times) {
-          total += cpu.times[type]
+          total += (cpu.times as any)[type]
         }
         idle += cpu.times.idle
       }
@@ -111,14 +126,12 @@ export default defineEventHandler(async (event) => {
       
       // Simulate real API latency via simple local check
       const start = performance.now()
-      db.prepare("SELECT 1").get()
+      await prisma.$queryRaw`SELECT 1`
       const end = performance.now()
       stats.latency = `${Math.round(end - start + 5)}ms`
       
     } catch (e) {
       console.log('Error reading from real DB', e)
-    } finally {
-      db.close()
     }
   } else {
     // Return mock data if not connected
@@ -153,6 +166,6 @@ export default defineEventHandler(async (event) => {
     stats,
     activeTasks,
     chartData,
-    isRealHermesConnected: !!db
+    isRealHermesConnected: !!prisma
   }
 })
