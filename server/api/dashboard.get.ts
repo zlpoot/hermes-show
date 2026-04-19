@@ -28,21 +28,21 @@ export default defineEventHandler(async (event) => {
         stats.totalSessions = Number(totalResult[0]?.count || 0)
       } catch(e) {}
       
-      // Today's sessions count
+      // Today's sessions count (started_at is Unix timestamp)
       try {
         const todayResult: any[] = await prisma.$queryRaw`
           SELECT COUNT(*) as count FROM sessions 
-          WHERE started_at > datetime('now', '-1 day')
+          WHERE started_at > (strftime('%s', 'now', '-1 day'))
         `
         stats.todaySessions = Number(todayResult[0]?.count || 0)
       } catch(e) {}
       
-      // Today's tokens
+      // Today's tokens (started_at is Unix timestamp)
       try {
         const totalTokensRow: any[] = await prisma.$queryRaw`
           SELECT SUM(input_tokens + output_tokens) as total 
           FROM sessions 
-          WHERE started_at > datetime('now', '-1 day')
+          WHERE started_at > (strftime('%s', 'now', '-1 day'))
         `
         if (totalTokensRow && totalTokensRow.length > 0 && totalTokensRow[0].total) {
           stats.todayTokens = formatTokens(Number(totalTokensRow[0].total))
@@ -60,15 +60,15 @@ export default defineEventHandler(async (event) => {
           }
         }
         
-        // Get tokens for the last 7 days for the chart
+        // Get tokens for the last 7 days for the chart (started_at is Unix timestamp)
         const tokenTrend: any[] = await prisma.$queryRaw`
-          SELECT date(started_at) as date, 
+          SELECT date(started_at, 'unixepoch', 'localtime') as date, 
                  SUM(input_tokens + output_tokens) as total,
                  COUNT(*) as session_count
           FROM sessions 
-          WHERE started_at > datetime('now', '-7 days') 
-          GROUP BY date(started_at) 
-          ORDER BY date(started_at) ASC
+          WHERE started_at > (strftime('%s', 'now', '-7 days')) 
+          GROUP BY date(started_at, 'unixepoch', 'localtime') 
+          ORDER BY date(started_at, 'unixepoch', 'localtime') ASC
         `
         
         if (tokenTrend && tokenTrend.length > 0) {
@@ -131,23 +131,17 @@ export default defineEventHandler(async (event) => {
       
       // Get recent sessions for the sidebar
       try {
-        const recent = await prisma.session.findMany({
-          take: 5,
-          orderBy: { started_at: 'desc' },
-          select: { 
-            id: true, 
-            title: true, 
-            source_platform: true, 
-            started_at: true,
-            input_tokens: true,
-            output_tokens: true
-          }
-        })
+        const recent: any[] = await prisma.$queryRaw`
+          SELECT id, title, source, started_at, input_tokens, output_tokens 
+          FROM sessions 
+          ORDER BY started_at DESC 
+          LIMIT 5
+        `
         
         recentSessions = recent.map((s: any) => ({
           id: s.id,
           title: s.title || 'Unnamed Session',
-          platform: s.source_platform || 'Local',
+          platform: s.source || 'Local',
           time: formatTime(s.started_at),
           tokens: (s.input_tokens || 0) + (s.output_tokens || 0)
         }))
