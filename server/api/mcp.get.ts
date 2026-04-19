@@ -1,95 +1,147 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { getHermesPath, getHermesConfig, getHermesDB } from '../utils/hermes'
+
 export default defineEventHandler(async (event) => {
-  const mockData = {
+  const hermesPath = getHermesPath()
+  const config = getHermesConfig()
+  const prisma = getHermesDB()
+  
+  // 从配置中获取 MCP 服务器配置
+  const mcpServers = config?.mcp_servers || {}
+  
+  // 统计数据
+  let todayCalls = 0
+  let successCalls = 0
+  let failedCalls = 0
+  
+  // 从数据库获取调用统计（如果有）
+  if (prisma) {
+    try {
+      // 检查是否有 mcp_calls 表
+      const tables: any[] = await prisma.$queryRaw`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='mcp_calls'
+      `
+      if (tables.length > 0) {
+        const stats: any[] = await prisma.$queryRaw`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as success,
+            SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed
+          FROM mcp_calls
+          WHERE date(created_at) = date('now')
+        `
+        if (stats[0]) {
+          todayCalls = Number(stats[0].total || 0)
+          successCalls = Number(stats[0].success || 0)
+          failedCalls = Number(stats[0].failed || 0)
+        }
+      }
+    } catch (e) {
+      // 表不存在，忽略
+    }
+  }
+  
+  // 构建服务器列表
+  const servers = Object.entries(mcpServers).map(([name, cfg]: [string, any]) => {
+    const enabled = cfg.enabled !== false
+    return {
+      id: `mcp-${name}`,
+      name,
+      command: cfg.command || cfg.url || '',
+      args: cfg.args || [],
+      env: maskEnvVars(cfg.env || {}),
+      connected: enabled, // 假设已配置即为已连接
+      toolCount: 0, // 需要运行时获取
+      callCount: 0,
+      latency: 0,
+      tools: cfg.tools?.include || [],
+      enabled
+    }
+  })
+  
+  // 如果没有配置任何 MCP 服务器，显示默认提示
+  const hasServers = servers.length > 0
+  
+  // 计算统计指标
+  const successRate = todayCalls > 0 ? (successCalls / todayCalls) * 100 : 100
+  
+  return {
     stats: {
-      todayCalls: 2847,
-      successRate: 98.2,
-      avgLatency: 45,
-      p99Latency: 230
+      todayCalls,
+      successRate: parseFloat(successRate.toFixed(1)),
+      avgLatency: 0,
+      p99Latency: 0
     },
     
-    servers: [
-      {
-        id: 'mcp-001',
-        name: 'filesystem',
-        command: 'npx -y @modelcontextprotocol/server-filesystem',
-        args: ['/home/user', '/home/user/documents'],
-        env: {},
-        connected: true,
-        toolCount: 8,
-        callCount: 1245,
-        latency: 12,
-        tools: ['read_file', 'write_file', 'list_directory', 'search_files', 'move_file', 'copy_file', 'delete_file', 'get_file_info']
-      },
-      {
-        id: 'mcp-002',
-        name: 'brave-search',
-        command: 'npx -y @modelcontextprotocol/server-brave-search',
-        args: [],
-        env: { BRAVE_API_KEY: '***' },
-        connected: true,
-        toolCount: 3,
-        callCount: 892,
-        latency: 180,
-        tools: ['brave_web_search', 'brave_local_search', 'brave_news_search']
-      },
-      {
-        id: 'mcp-003',
-        name: 'sqlite',
-        command: 'uvx mcp-server-sqlite',
-        args: ['--db-path', '/home/user/data.db'],
-        env: {},
-        connected: true,
-        toolCount: 5,
-        callCount: 456,
-        latency: 8,
-        tools: ['query', 'list_tables', 'describe_table', 'execute', 'create_table']
-      },
-      {
-        id: 'mcp-004',
-        name: 'github',
-        command: 'npx -y @modelcontextprotocol/server-github',
-        args: [],
-        env: { GITHUB_TOKEN: '***' },
-        connected: false,
-        toolCount: 12,
-        callCount: 254,
-        latency: 0,
-        tools: ['search_repositories', 'get_repository', 'list_issues', 'create_issue', 'create_pull_request', 'get_file_contents', 'push_files', 'create_branch', 'list_commits', 'get_commit', 'list_pull_requests', 'update_issue']
-      }
-    ],
+    servers,
     
-    tools: [
-      { name: 'read_file', server: 'filesystem', description: '读取文件内容', category: 'file', callCount: 523, avgTime: 8, enabled: true },
-      { name: 'write_file', server: 'filesystem', description: '写入文件内容', category: 'file', callCount: 412, avgTime: 15, enabled: true },
-      { name: 'list_directory', server: 'filesystem', description: '列出目录内容', category: 'file', callCount: 198, avgTime: 5, enabled: true },
-      { name: 'search_files', server: 'filesystem', description: '搜索文件', category: 'file', callCount: 112, avgTime: 45, enabled: true },
-      { name: 'brave_web_search', server: 'brave-search', description: 'Brave 网页搜索', category: 'web', callCount: 456, avgTime: 180, enabled: true },
-      { name: 'brave_local_search', server: 'brave-search', description: 'Brave 本地搜索', category: 'web', callCount: 234, avgTime: 150, enabled: true },
-      { name: 'brave_news_search', server: 'brave-search', description: 'Brave 新闻搜索', category: 'web', callCount: 202, avgTime: 160, enabled: false },
-      { name: 'query', server: 'sqlite', description: '执行 SQL 查询', category: 'database', callCount: 345, avgTime: 6, enabled: true },
-      { name: 'list_tables', server: 'sqlite', description: '列出所有表', category: 'database', callCount: 78, avgTime: 3, enabled: true },
-      { name: 'describe_table', server: 'sqlite', description: '描述表结构', category: 'database', callCount: 33, avgTime: 2, enabled: true },
-      { name: 'search_repositories', server: 'github', description: '搜索 GitHub 仓库', category: 'code', callCount: 123, avgTime: 250, enabled: true },
-      { name: 'get_repository', server: 'github', description: '获取仓库信息', category: 'code', callCount: 89, avgTime: 180, enabled: true },
-      { name: 'list_issues', server: 'github', description: '列出 Issues', category: 'code', callCount: 42, avgTime: 200, enabled: true }
-    ],
+    // 工具列表（从配置中提取）
+    tools: servers.flatMap(s => 
+      s.tools.map(t => ({
+        name: t,
+        server: s.name,
+        description: `${s.name} 提供的工具`,
+        category: getToolCategory(t),
+        callCount: 0,
+        avgTime: 0,
+        enabled: true
+      }))
+    ),
     
     callStats: {
-      total: 2847,
-      success: 2795,
-      failed: 32,
-      timeout: 20,
-      topTools: [
-        { tool: 'read_file', calls: 523 },
-        { tool: 'brave_web_search', calls: 456 },
-        { tool: 'write_file', calls: 412 },
-        { tool: 'query', calls: 345 },
-        { tool: 'brave_local_search', calls: 234 }
-      ]
+      total: todayCalls,
+      success: successCalls,
+      failed: failedCalls,
+      timeout: 0,
+      topTools: []
     },
     
-    isRealHermesConnected: false
+    // 配置提示
+    configHint: hasServers ? null : {
+      message: '尚未配置 MCP 服务器',
+      doc: '在 config.yaml 中添加 mcp_servers 配置来启用 MCP 工具',
+      example: `mcp_servers:
+  filesystem:
+    command: npx
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '/home/user']
+  github:
+    url: https://mcp.github.com
+    env:
+      GITHUB_TOKEN: your-token`
+    },
+    
+    isRealHermesConnected: true
   }
-
-  return mockData
 })
+
+function maskEnvVars(env: Record<string, string>): Record<string, string> {
+  const masked: Record<string, string> = {}
+  for (const [key, value] of Object.entries(env)) {
+    // 敏感信息脱敏
+    if (key.toLowerCase().includes('token') || 
+        key.toLowerCase().includes('key') || 
+        key.toLowerCase().includes('secret')) {
+      masked[key] = '***'
+    } else {
+      masked[key] = value
+    }
+  }
+  return masked
+}
+
+function getToolCategory(toolName: string): string {
+  if (toolName.includes('file') || toolName.includes('read') || toolName.includes('write')) {
+    return 'file'
+  }
+  if (toolName.includes('search') || toolName.includes('web')) {
+    return 'web'
+  }
+  if (toolName.includes('query') || toolName.includes('table') || toolName.includes('sql')) {
+    return 'database'
+  }
+  if (toolName.includes('repo') || toolName.includes('issue') || toolName.includes('pr')) {
+    return 'code'
+  }
+  return 'other'
+}
