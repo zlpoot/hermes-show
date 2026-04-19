@@ -39,7 +39,9 @@ function loadJobs(): CronJob[] {
   try {
     if (fs.existsSync(jobsFile)) {
       const content = fs.readFileSync(jobsFile, 'utf8')
-      return JSON.parse(content)
+      const data = JSON.parse(content)
+      // Support both {jobs: [...]} and [...] formats
+      return Array.isArray(data) ? data : (data.jobs || [])
     }
   } catch (e) {
     console.error('Failed to load cron jobs:', e)
