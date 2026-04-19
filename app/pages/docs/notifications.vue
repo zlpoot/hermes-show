@@ -56,8 +56,8 @@ cli:
 
     <p>获取 Chat ID 的方法：</p>
     <pre><code># 1. 给你的 Bot 发送一条消息
-# 2. 访问以下 URL（替换 TOKEN）
-https://api.telegram.org/bot<TOKEN>/getUpdates
+# 2. 访问以下 URL（替换 YOUR_TOKEN）
+https://api.telegram.org/botYOUR_TOKEN/getUpdates
 
 # 3. 或使用 @userinfobot 获取</code></pre>
 
@@ -323,19 +323,19 @@ Response:
 
     <h3>Telegram 通知失败</h3>
     <pre><code># 验证 Bot Token
-curl "https://api.telegram.org/bot<TOKEN>/getMe"
+curl "https://api.telegram.org/botYOUR_TOKEN/getMe"
 
 # 验证 Chat ID
-curl "https://api.telegram.org/bot<TOKEN>/getChat?chat_id=<CHAT_ID>"
+curl "https://api.telegram.org/botYOUR_TOKEN/getChat?chat_id=YOUR_CHAT_ID"
 
 # 测试发送
-curl -X POST "https://api.telegram.org/bot<TOKEN>/sendMessage" \
-  -d "chat_id=<CHAT_ID>" \
+curl -X POST "https://api.telegram.org/botYOUR_TOKEN/sendMessage" \
+  -d "chat_id=YOUR_CHAT_ID" \
   -d "text=Test"</code></pre>
 
     <h3>Discord 通知失败</h3>
     <pre><code># 测试 Webhook
-curl -X POST "<WEBHOOK_URL>" \
+curl -X POST "YOUR_WEBHOOK_URL" \
   -H "Content-Type: application/json" \
   -d '{"content": "Test notification"}'</code></pre>
 
