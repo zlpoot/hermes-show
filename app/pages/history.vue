@@ -21,19 +21,28 @@
         </div>
         <div class="relative mt-4">
           <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="搜索历史对话..." class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors">
+          <input 
+            type="text" 
+            v-model="searchQuery" 
+            @input="debouncedSearch"
+            placeholder="搜索历史对话..." 
+            class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
+          <Loader2 v-if="isSearching" size="14" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
         </div>
       </div>
       
       <div class="flex-1 overflow-y-auto p-2 space-y-1">
         <div v-for="session in sessions" :key="session.id"
-          class="w-full flex items-center text-left p-1 rounded-lg transition-colors border border-transparent hover:bg-muted/50 group"
-          :class="activeSession === session.id ? 'bg-primary/10 border-primary/30' : ''">
+          class="w-full flex items-center text-left p-1 rounded-lg transition-colors border border-transparent hover:bg-muted/50 group cursor-pointer"
+          :class="activeSession === session.id ? 'bg-primary/10 border-primary/30' : ''"
+          @click="selectSession(session.id)">
           
           <!-- Checkbox for batch selection -->
-          <input type="checkbox" :value="session.id" v-model="selectedIds" class="mx-2 w-4 h-4 cursor-pointer rounded border-card-border text-primary focus:ring-primary" />
+          <input type="checkbox" :value="session.id" v-model="selectedIds" 
+            @click.stop
+            class="mx-2 w-4 h-4 cursor-pointer rounded border-card-border text-primary focus:ring-primary" />
           
-          <div class="flex-1 overflow-hidden cursor-pointer p-2" @click="activeSession = session.id">
+          <div class="flex-1 overflow-hidden p-2">
             <h4 class="text-sm font-medium line-clamp-1" :class="activeSession === session.id ? 'text-primary' : 'text-foreground'">{{ session.title }}</h4>
             <div class="flex items-center justify-between mt-2">
               <span class="text-xs text-muted-foreground">{{ session.date }}</span>
@@ -123,11 +132,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSquare, Trash2 } from 'lucide-vue-next'
+import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSquare, Trash2, Loader2 } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
 
+const searchQuery = ref('')
+const isSearching = ref(false)
 const { data, refresh } = await useFetch('/api/history')
 
 const sessions = computed(() => data.value?.sessions || [])
@@ -136,6 +147,33 @@ const activeSessionDetail = ref(null)
 
 const selectedIds = ref<string[]>([])
 const isDeleting = ref(false)
+
+// Select a session and load its details
+const selectSession = (sessionId: string) => {
+  activeSession.value = sessionId
+}
+
+// Debounced search function
+let searchTimeout: ReturnType<typeof setTimeout>
+const debouncedSearch = () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(async () => {
+    isSearching.value = true
+    try {
+      const query = searchQuery.value.trim()
+      if (query) {
+        const { data: searchData } = await useFetch(`/api/history?q=${encodeURIComponent(query)}`)
+        if (searchData.value) {
+          data.value = searchData.value
+        }
+      } else {
+        await refresh()
+      }
+    } finally {
+      isSearching.value = false
+    }
+  }, 300)
+}
 
 const isAllSelected = computed(() => {
   return sessions.value.length > 0 && selectedIds.value.length === sessions.value.length
@@ -192,8 +230,13 @@ watch(activeSession, async (newId) => {
       router.replace({ query: { ...route.query, id: newId } })
     }
     
-    const { data: detailData } = await useFetch(`/api/history?id=${newId}`)
-    activeSessionDetail.value = detailData.value
+    // Use $fetch to avoid caching issues
+    try {
+      const detailData = await $fetch(`/api/history?id=${newId}`)
+      activeSessionDetail.value = detailData
+    } catch (e) {
+      console.error('Failed to load session detail:', e)
+    }
   }
 }, { immediate: true })
 
@@ -205,6 +248,11 @@ watch(() => route.query.id, (newId) => {
 })
 
 const currentSession = computed(() => {
+  // First try to get from detail (has fresh data)
+  if (activeSessionDetail.value?.session) {
+    return activeSessionDetail.value.session
+  }
+  // Fallback to session list
   return sessions.value.find(s => s.id === activeSession.value)
 })
 

@@ -1,29 +1,34 @@
 import { defineEventHandler, getQuery } from 'h3'
-import { getHermesLogs } from '../utils/hermes'
+import { getHermesLogs, getHermesPath, parseLogLine } from '../utils/hermes'
+import fs from 'node:fs'
+import path from 'node:path'
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const linesCount = parseInt((query.lines as string) || '100')
+  const logFile = (query.file as string) || 'agent.log'
   
-  const logs = getHermesLogs('agent.log', linesCount)
+  // List available log files
+  const logsDir = path.join(getHermesPath(), 'logs')
+  let availableFiles: string[] = []
+  try {
+    if (fs.existsSync(logsDir)) {
+      availableFiles = fs.readdirSync(logsDir).filter(f => f.endsWith('.log'))
+    }
+  } catch (e) {
+    console.error('Failed to list log files:', e)
+  }
   
-  if (logs) {
-    // Parse raw text into structured JSON if possible
-    const parsedLogs = logs.map(line => {
-      const match = line.match(/\[(.*?)\] \[([A-Z]+)\] \[(.*?)\] (.*)/)
-      if (match) {
-        return {
-          time: match[1],
-          level: match[2],
-          source: match[3],
-          message: match[4]
-        }
-      }
-      return { time: '', level: 'INFO', source: 'System', message: line }
-    })
+  const rawLogs = getHermesLogs(logFile, linesCount)
+  
+  if (rawLogs) {
+    // Parse raw text into structured JSON
+    const parsedLogs = rawLogs.map(line => parseLogLine(line))
     
     return {
       logs: parsedLogs,
+      logFiles: availableFiles.length > 0 ? availableFiles : [logFile],
+      currentFile: logFile,
       isRealHermesConnected: true
     }
   }
@@ -42,6 +47,8 @@ export default defineEventHandler(async (event) => {
       { time: '14:40:00', level: 'WARN', source: 'Tool', message: 'Timeout executing mcp_server_sync. Retrying (1/3)...' },
       { time: '14:40:02', level: 'SUCCESS', source: 'Tool', message: 'mcp_server_sync executed successfully on retry.' },
     ],
+    logFiles: ['agent.log', 'gateway.log', 'cron.log', 'mcp.log'],
+    currentFile: logFile,
     isRealHermesConnected: false
   }
 })

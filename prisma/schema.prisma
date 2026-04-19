@@ -11,8 +11,8 @@ model Session {
   id              String  @id
   title           String?
   source_platform String?
-  started_at      String?
-  ended_at        String?
+  started_at      Float?
+  ended_at        Float?
   input_tokens    Int?
   output_tokens   Int?
 
@@ -22,15 +22,19 @@ model Session {
 }
 
 model Message {
-  session_id  String
-  timestamp   String
-  role        String?
-  tool_name   String?
-  content     String?
+  id            Int     @id @default(autoincrement())
+  session_id    String
+  role          String?
+  content       String?
+  tool_name     String?
+  timestamp     Float
+  tool_call_id  String?
+  tool_calls    String?
+  token_count   Int?
+  finish_reason String?
+  reasoning     String?
 
-  session     Session? @relation(fields: [session_id], references: [id])
+  session       Session? @relation(fields: [session_id], references: [id])
 
-  // Use a composite key because there's no guaranteed 'id' column in the Hermes messages table
-  @@id([session_id, timestamp])
   @@map("messages")
 }

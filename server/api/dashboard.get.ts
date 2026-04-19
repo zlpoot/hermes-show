@@ -5,29 +5,66 @@ import os from 'node:os'
 export default defineEventHandler(async (event) => {
   const prisma = getHermesDB()
   
-  // Basic mock defaults if hermes not found locally
+  // Default stats
   const stats = {
     todayTokens: '0',
+    totalSessions: 0,
+    todaySessions: 0,
     cpuLoad: '0%',
     activeAgents: 0,
-    latency: '0ms'
+    latency: '0ms',
+    avgTokensPerSession: '0'
   }
   
   let activeTasks: any[] = []
   let chartData = { labels: [] as string[], datasets: [] as any[] }
-
+  let recentSessions: any[] = []
+  
   if (prisma) {
     try {
-      // Get total tokens today via raw query because we need date functions and sum
+      // Total sessions count
       try {
-        const totalTokensRow: any[] = await prisma.$queryRaw`SELECT SUM(input_tokens + output_tokens) as total FROM sessions WHERE started_at > datetime('now', '-1 day')`
+        const totalResult: any[] = await prisma.$queryRaw`SELECT COUNT(*) as count FROM sessions`
+        stats.totalSessions = Number(totalResult[0]?.count || 0)
+      } catch(e) {}
+      
+      // Today's sessions count
+      try {
+        const todayResult: any[] = await prisma.$queryRaw`
+          SELECT COUNT(*) as count FROM sessions 
+          WHERE started_at > datetime('now', '-1 day')
+        `
+        stats.todaySessions = Number(todayResult[0]?.count || 0)
+      } catch(e) {}
+      
+      // Today's tokens
+      try {
+        const totalTokensRow: any[] = await prisma.$queryRaw`
+          SELECT SUM(input_tokens + output_tokens) as total 
+          FROM sessions 
+          WHERE started_at > datetime('now', '-1 day')
+        `
         if (totalTokensRow && totalTokensRow.length > 0 && totalTokensRow[0].total) {
-          stats.todayTokens = (Number(totalTokensRow[0].total) / 1000).toFixed(1) + 'K'
+          stats.todayTokens = formatTokens(Number(totalTokensRow[0].total))
+        }
+        
+        // Average tokens per session
+        if (stats.totalSessions > 0) {
+          const avgResult: any[] = await prisma.$queryRaw`
+            SELECT AVG(input_tokens + output_tokens) as avg 
+            FROM sessions 
+            WHERE input_tokens IS NOT NULL OR output_tokens IS NOT NULL
+          `
+          if (avgResult && avgResult.length > 0 && avgResult[0].avg) {
+            stats.avgTokensPerSession = formatTokens(Number(avgResult[0].avg))
+          }
         }
         
         // Get tokens for the last 7 days for the chart
         const tokenTrend: any[] = await prisma.$queryRaw`
-          SELECT date(started_at) as date, SUM(input_tokens + output_tokens) as total 
+          SELECT date(started_at) as date, 
+                 SUM(input_tokens + output_tokens) as total,
+                 COUNT(*) as session_count
           FROM sessions 
           WHERE started_at > datetime('now', '-7 days') 
           GROUP BY date(started_at) 
@@ -36,7 +73,7 @@ export default defineEventHandler(async (event) => {
         
         if (tokenTrend && tokenTrend.length > 0) {
           chartData = {
-            labels: tokenTrend.map(t => t.date),
+            labels: tokenTrend.map(t => formatDate(t.date)),
             datasets: [
               {
                 label: 'Tokens',
@@ -49,9 +86,9 @@ export default defineEventHandler(async (event) => {
             ]
           }
         }
-      } catch(e) { /* ignore missing columns or tables */ }
+      } catch(e) { /* ignore */ }
       
-      // Get active agents using Prisma Client
+      // Get active agents
       try {
         const activeCount = await prisma.session.count({
           where: { ended_at: null }
@@ -65,58 +102,58 @@ export default defineEventHandler(async (event) => {
           select: { id: true, title: true, source_platform: true, started_at: true }
         })
         
-        activeTasks = activeTasksData.map((t: any) => {
-          let parsedTime = 'Unknown Time'
-          if (t.started_at) {
-            const isNumeric = !isNaN(Number(t.started_at))
-            if (isNumeric) {
-              const ts = Number(t.started_at)
-              parsedTime = new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleTimeString()
-            } else {
-              parsedTime = new Date(t.started_at).toLocaleTimeString()
-            }
-          }
+        activeTasks = activeTasksData.map((t: any) => ({
+          id: t.id,
+          name: t.title || 'Unnamed Task',
+          agent: 'hermes-core',
+          platform: t.source_platform || 'Local',
+          time: formatTime(t.started_at)
+        }))
+      } catch(e) {
+        // Fallback
+        try {
+          const countResult: any[] = await prisma.$queryRaw`SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NULL`
+          stats.activeAgents = Number(countResult[0]?.count || 0)
           
-          return {
+          const fallbackTasks: any[] = await prisma.$queryRaw`
+            SELECT id, title, 'Local' as source_platform, started_at 
+            FROM sessions WHERE ended_at IS NULL LIMIT 10
+          `
+          activeTasks = fallbackTasks.map((t: any) => ({
             id: t.id,
             name: t.title || 'Unnamed Task',
             agent: 'hermes-core',
-            platform: t.source_platform || 'Local',
-            time: parsedTime
-          }
-        })
-      } catch(e) { 
-        // Fallback using raw query if Prisma schema validation fails for some reason
-        try {
-          const countResult: any[] = await prisma.$queryRaw`SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NULL`
-          if (countResult && countResult.length > 0) {
-            stats.activeAgents = Number(countResult[0].count)
-          }
-          
-          const fallbackTasks: any[] = await prisma.$queryRaw`SELECT id, title, 'Local' as source_platform, started_at FROM sessions WHERE ended_at IS NULL LIMIT 10`
-          activeTasks = fallbackTasks.map((t: any) => {
-            let parsedTime = 'Unknown Time'
-            if (t.started_at) {
-              const isNumeric = !isNaN(Number(t.started_at))
-              if (isNumeric) {
-                const ts = Number(t.started_at)
-                parsedTime = new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleTimeString()
-              } else {
-                parsedTime = new Date(t.started_at).toLocaleTimeString()
-              }
-            }
-            return {
-              id: t.id,
-              name: t.title || 'Unnamed Task',
-              agent: 'hermes-core',
-              platform: t.source_platform || 'Local',
-              time: parsedTime
-            }
-          })
+            platform: 'Local',
+            time: formatTime(t.started_at)
+          }))
         } catch(err) {}
       }
       
-      // Calculate real CPU load based on OS module
+      // Get recent sessions for the sidebar
+      try {
+        const recent = await prisma.session.findMany({
+          take: 5,
+          orderBy: { started_at: 'desc' },
+          select: { 
+            id: true, 
+            title: true, 
+            source_platform: true, 
+            started_at: true,
+            input_tokens: true,
+            output_tokens: true
+          }
+        })
+        
+        recentSessions = recent.map((s: any) => ({
+          id: s.id,
+          title: s.title || 'Unnamed Session',
+          platform: s.source_platform || 'Local',
+          time: formatTime(s.started_at),
+          tokens: (s.input_tokens || 0) + (s.output_tokens || 0)
+        }))
+      } catch(e) {}
+      
+      // CPU load
       const cpus = os.cpus()
       let idle = 0
       let total = 0
@@ -129,7 +166,7 @@ export default defineEventHandler(async (event) => {
       const cpuUsage = 100 - ~~(100 * idle / total)
       stats.cpuLoad = `${cpuUsage}%`
       
-      // Simulate real API latency via simple local check
+      // API latency
       const start = performance.now()
       await prisma.$queryRaw`SELECT 1`
       const end = performance.now()
@@ -139,19 +176,21 @@ export default defineEventHandler(async (event) => {
       console.log('Error reading from real DB', e)
     }
   } else {
-    // Return mock data if not connected
+    // Mock data
     stats.todayTokens = '1.24M'
+    stats.totalSessions = 156
+    stats.todaySessions = 12
     stats.cpuLoad = '18.4%'
     stats.activeAgents = 4
     stats.latency = '245ms'
+    stats.avgTokensPerSession = '8.5K'
     
     activeTasks = [
-      { id: 1, name: '数据备份到 S3 (Cron)', agent: 'sys-admin-01', platform: 'Background', time: '10:30 AM' },
-      { id: 2, name: '总结 GitHub Issues', agent: 'research-bot', platform: 'Telegram', time: '11:15 AM' },
-      { id: 3, name: '训练轨迹压缩 (MiMo v2)', agent: 'hermes-core', platform: 'Local', time: '11:42 AM' },
+      { id: '1', name: '数据备份到 S3', agent: 'sys-admin-01', platform: 'Background', time: '10:30 AM' },
+      { id: '2', name: '总结 GitHub Issues', agent: 'research-bot', platform: 'Telegram', time: '11:15 AM' },
+      { id: '3', name: '代码审查', agent: 'hermes-core', platform: 'Local', time: '11:42 AM' },
     ]
     
-    // Mock chart data
     chartData = {
       labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
       datasets: [
@@ -165,12 +204,48 @@ export default defineEventHandler(async (event) => {
         }
       ]
     }
+    
+    recentSessions = [
+      { id: '1', title: 'Introduction', platform: 'Local', time: '10:50 AM', tokens: 1250 },
+      { id: '2', title: 'Code Review', platform: 'Telegram', time: '09:30 AM', tokens: 8420 },
+      { id: '3', title: 'Bug Fix', platform: 'Local', time: 'Yesterday', tokens: 3560 },
+    ]
   }
   
   return {
     stats,
     activeTasks,
     chartData,
+    recentSessions,
     isRealHermesConnected: !!prisma
   }
 })
+
+function formatTokens(tokens: number): string {
+  if (tokens >= 1000000) {
+    return (tokens / 1000000).toFixed(2) + 'M'
+  } else if (tokens >= 1000) {
+    return (tokens / 1000).toFixed(1) + 'K'
+  }
+  return tokens.toString()
+}
+
+function formatTime(startedAt: string | null): string {
+  if (!startedAt) return 'Unknown Time'
+  
+  const isNumeric = !isNaN(Number(startedAt))
+  if (isNumeric) {
+    const ts = Number(startedAt)
+    return new Date(ts < 10000000000 ? ts * 1000 : ts).toLocaleTimeString()
+  }
+  return new Date(startedAt).toLocaleTimeString()
+}
+
+function formatDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  } catch {
+    return dateStr
+  }
+}

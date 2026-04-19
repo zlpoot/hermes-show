@@ -37,11 +37,15 @@ export const getHermesDB = () => {
   if (prisma) return prisma
 
   const dbPath = path.join(getHermesPath(), 'state.db')
+  console.log('[hermes] Looking for DB at:', dbPath)
+  console.log('[hermes] DB exists:', fs.existsSync(dbPath))
+  
   try {
     if (fs.existsSync(dbPath)) {
       // Create a valid file URL for Prisma
       // Handle WSL UNC paths correctly
       let url = `file:${dbPath.replace(/\\/g, '/')}`
+      console.log('[hermes] Prisma URL:', url)
       
       prisma = new PrismaClient({
         datasources: {
@@ -50,11 +54,13 @@ export const getHermesDB = () => {
           }
         }
       })
+      console.log('[hermes] Prisma client created successfully')
       return prisma
     }
   } catch (e) {
-    console.error('Failed to connect to state.db with Prisma', e)
+    console.error('[hermes] Failed to connect to state.db with Prisma', e)
   }
+  console.log('[hermes] Returning null prisma')
   return null
 }
 
@@ -70,4 +76,31 @@ export const getHermesLogs = (filename: string, linesCount: number = 100) => {
     console.error(`Failed to read ${filename}`, e)
   }
   return null
+}
+
+export const parseLogLine = (line: string) => {
+  // Try standard format: 2026-04-15 06:39:53,020 INFO module: message
+  const standardMatch = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})\s+([A-Z]+)\s+([^:]+):\s+(.*)$/)
+  if (standardMatch) {
+    return {
+      time: standardMatch[1].split(' ')[1].split(',')[0], // Just the time part
+      level: standardMatch[2],
+      source: standardMatch[3].trim(),
+      message: standardMatch[4]
+    }
+  }
+  
+  // Try bracketed format: [14:30:01] [INFO] [Core] message
+  const bracketMatch = line.match(/\[(.*?)\]\s*\[([A-Z]+)\]\s*\[(.*?)\]\s*(.*)/)
+  if (bracketMatch) {
+    return {
+      time: bracketMatch[1],
+      level: bracketMatch[2],
+      source: bracketMatch[3],
+      message: bracketMatch[4]
+    }
+  }
+  
+  // Fallback: just return the whole line as message
+  return { time: '', level: 'INFO', source: 'System', message: line }
 }
