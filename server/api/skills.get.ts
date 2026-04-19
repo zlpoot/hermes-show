@@ -101,7 +101,12 @@ function scanSkillsDir(skillsDir: string): Skill[] {
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const hermesPath = getHermesPath()
-  const skillsDir = path.join(hermesPath, 'hermes-agent', 'skills')
+  
+  // 尝试两个可能的 skills 目录位置
+  let skillsDir = path.join(hermesPath, 'skills')
+  if (!fs.existsSync(skillsDir)) {
+    skillsDir = path.join(hermesPath, 'hermes-agent', 'skills')
+  }
   
   let skills = scanSkillsDir(skillsDir)
   
@@ -149,16 +154,18 @@ export default defineEventHandler(async (event) => {
         scripts = fs.readdirSync(scriptPath).filter(f => f.endsWith('.py') || f.endsWith('.sh'))
       }
       
+      // TODO: 从日志或数据库统计 skill 使用情况
+      // 目前返回占位数据
       return {
         skill,
         content,
         references,
         scripts,
         stats: {
-          calls: Math.floor(Math.random() * 100) + 10,
-          successRate: (95 + Math.random() * 5).toFixed(1),
-          avgTime: Math.floor(Math.random() * 500) + 100,
-          lastUsed: `${Math.floor(Math.random() * 24)}h前`
+          calls: 0,
+          successRate: '100.0',
+          avgTime: 0,
+          lastUsed: '未知'
         },
         isRealHermesConnected: true
       }
