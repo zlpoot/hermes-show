@@ -73,13 +73,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { LayoutDashboard, SlidersHorizontal, History, TerminalSquare, Bot, Settings, Cpu, User, BookOpen, Clock, Radio, ExternalLink } from 'lucide-vue-next'
+import { LayoutDashboard, SlidersHorizontal, History, TerminalSquare, Bot, Settings, Cpu, User, BookOpen, Clock, Radio, ExternalLink, DollarSign } from 'lucide-vue-next'
 
 const route = useRoute()
 
 const menuItems = [
   { name: '仪表盘', path: '/', icon: LayoutDashboard },
   { name: '配置中心', path: '/config', icon: SlidersHorizontal },
+  { name: '成本统计', path: '/cost', icon: DollarSign },
   { name: '对话历史', path: '/history', icon: History },
   { name: 'Skills 管理', path: '/skills', icon: BookOpen },
   { name: '定时任务', path: '/cron', icon: Clock },
