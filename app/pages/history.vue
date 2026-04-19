@@ -68,9 +68,19 @@
         
         <div class="flex items-center gap-2" v-if="currentSession">
           <span class="text-xs px-2 py-1 bg-background border border-card-border rounded-md text-muted-foreground">Tokens: {{ currentSession.tokens }}</span>
-          <button class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
-            <Download size="16" />
-          </button>
+          <div class="relative">
+            <button @click="showExportMenu = !showExportMenu" class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
+              <Download size="16" />
+            </button>
+            <div v-if="showExportMenu" class="absolute right-0 top-full mt-1 bg-card border border-card-border rounded-lg shadow-lg py-1 min-w-[140px] z-10">
+              <button @click="exportSession('json')" class="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2">
+                <FileJson size="14" /> 导出 JSON
+              </button>
+              <button @click="exportSession('md')" class="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2">
+                <FileText size="14" /> 导出 Markdown
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -81,7 +91,26 @@
         </div>
         
         <template v-else>
-          <div v-for="(msg, idx) in messages" :key="idx" class="flex gap-4 max-w-3xl">
+          <!-- Message Filter -->
+          <div class="flex items-center gap-3 pb-4 border-b border-card-border">
+            <div class="relative flex-1 max-w-md">
+              <Search size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input 
+                type="text" 
+                v-model="messageFilter" 
+                placeholder="过滤消息内容..." 
+                class="w-full bg-background border border-card-border rounded-lg pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors" />
+            </div>
+            <select v-model="roleFilter" class="bg-background border border-card-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary">
+              <option value="">全部角色</option>
+              <option value="user">用户</option>
+              <option value="assistant">助手</option>
+              <option value="tool">工具调用</option>
+            </select>
+            <span class="text-xs text-muted-foreground">{{ filteredMessages.length }} / {{ messages.length }} 条消息</span>
+          </div>
+        
+          <div v-for="(msg, idx) in filteredMessages" :key="idx" class="flex gap-4 max-w-3xl">
             <!-- User Message -->
             <template v-if="msg.role === 'user'">
               <div class="w-8 h-8 rounded-full bg-secondary/20 border border-secondary/30 flex items-center justify-center shrink-0">
@@ -132,7 +161,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSquare, Trash2, Loader2 } from 'lucide-vue-next'
+import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSquare, Trash2, Loader2, FileJson, FileText } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -147,6 +176,87 @@ const activeSessionDetail = ref(null)
 
 const selectedIds = ref<string[]>([])
 const isDeleting = ref(false)
+
+// Message filter
+const messageFilter = ref('')
+const roleFilter = ref('')
+const showExportMenu = ref(false)
+
+// Filter messages by content and role
+const filteredMessages = computed(() => {
+  let result = messages.value
+  
+  if (roleFilter.value) {
+    if (roleFilter.value === 'tool') {
+      result = result.filter((m: any) => m.role === 'tool' || m.tool_name)
+    } else {
+      result = result.filter((m: any) => m.role === roleFilter.value && !m.tool_name)
+    }
+  }
+  
+  if (messageFilter.value.trim()) {
+    const query = messageFilter.value.toLowerCase()
+    result = result.filter((m: any) => 
+      (m.content && m.content.toLowerCase().includes(query)) ||
+      (m.tool_name && m.tool_name.toLowerCase().includes(query))
+    )
+  }
+  
+  return result
+})
+
+// Export session
+const exportSession = (format: 'json' | 'md') => {
+  showExportMenu.value = false
+  if (!currentSession.value || !messages.value.length) return
+  
+  let content: string
+  let filename: string
+  
+  if (format === 'json') {
+    content = JSON.stringify({
+      session: currentSession.value,
+      messages: messages.value
+    }, null, 2)
+    filename = `${currentSession.value.id}.json`
+  } else {
+    const lines: string[] = [
+      `# ${currentSession.value.title}`,
+      '',
+      `- **ID**: ${currentSession.value.id}`,
+      `- **Platform**: ${currentSession.value.platform}`,
+      `- **Date**: ${currentSession.value.date}`,
+      `- **Tokens**: ${currentSession.value.tokens}`,
+      '',
+      '---',
+      '',
+      '## Conversation',
+      ''
+    ]
+    
+    for (const msg of messages.value) {
+      if (msg.role === 'user') {
+        lines.push(`### User`, '', msg.content, '')
+      } else if (msg.role === 'tool' || msg.tool_name) {
+        lines.push(`### Tool: ${msg.tool_name || 'unknown'}`, '', '```', msg.content, '```', '')
+      } else if (msg.role === 'assistant') {
+        lines.push(`### Assistant`, '', msg.content, '')
+      }
+    }
+    
+    content = lines.join('\n')
+    filename = `${currentSession.value.id}.md`
+  }
+  
+  // Download file
+  const blob = new Blob([content], { type: format === 'json' ? 'application/json' : 'text/markdown' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 // Select a session and load its details
 const selectSession = (sessionId: string) => {
