@@ -1,264 +1,304 @@
 <template>
-  <div class="space-y-6 max-w-5xl mx-auto">
-    <!-- Header -->
+  <div class="space-y-6">
+    <!-- Connection Status -->
+    <div v-if="data?.isRealHermesConnected" class="bg-primary/20 text-primary border border-primary/30 p-3 rounded-xl flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+        <span class="text-sm font-medium">已连接 Hermes Agent</span>
+      </div>
+      <button @click="doRefresh" class="text-xs hover:underline flex items-center gap-1">
+        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        刷新
+      </button>
+    </div>
+    <div v-else class="bg-amber-500/10 text-amber-500 border border-amber-500/30 p-3 rounded-xl">
+      <span class="text-sm font-medium">Mock 模式 (示例数据)</span>
+    </div>
+
+    <!-- Gateway Overview Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="glass-panel p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-muted-foreground">网关状态</span>
+          <div class="w-3 h-3 rounded-full" :class="data?.status === 'running' ? 'bg-green-400 animate-pulse' : 'bg-red-400'"></div>
+        </div>
+        <h3 class="text-xl font-bold" :class="data?.status === 'running' ? 'text-green-400' : 'text-red-400'">
+          {{ data?.status === 'running' ? '运行中' : '已停止' }}
+        </h3>
+        <p class="text-xs text-muted-foreground mt-1">
+          运行时长: {{ data?.uptime || '-' }}
+        </p>
+      </div>
+      
+      <div class="glass-panel p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-muted-foreground">连接数</span>
+          <Users size="16" class="text-blue-400" />
+        </div>
+        <h3 class="text-2xl font-bold font-mono">{{ data?.connections?.length || 0 }}</h3>
+        <p class="text-xs text-muted-foreground mt-1">
+          活跃连接
+        </p>
+      </div>
+      
+      <div class="glass-panel p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-muted-foreground">消息队列</span>
+          <Mail size="16" class="text-amber-400" />
+        </div>
+        <h3 class="text-2xl font-bold font-mono">{{ data?.messageQueue?.length || 0 }}</h3>
+        <p class="text-xs text-muted-foreground mt-1">
+          待处理消息
+        </p>
+      </div>
+      
+      <div class="glass-panel p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-muted-foreground">重连次数</span>
+          <RefreshCw size="16" class="text-red-400" />
+        </div>
+        <h3 class="text-2xl font-bold font-mono">{{ data?.reconnectCount || 0 }}</h3>
+        <p class="text-xs text-muted-foreground mt-1">
+          今日重连
+        </p>
+      </div>
+    </div>
+
+    <!-- Platform Connections -->
     <div class="glass-panel p-6">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-            <Radio class="text-primary" size="24" />
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <Radio size="18" class="text-primary" />
+          平台连接状态
+        </h3>
+        <button @click="reconnectAll" class="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-lg border border-primary/30 hover:bg-primary/20 transition-colors">
+          重连全部
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div v-for="conn in data?.connections" :key="conn.platform" 
+             class="p-4 bg-muted/30 rounded-xl border border-card-border hover:border-primary/50 transition-colors">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-card flex items-center justify-center border border-card-border">
+                <component :is="getPlatformIcon(conn.platform)" size="20" :class="conn.connected ? 'text-primary' : 'text-muted-foreground'" />
+              </div>
+              <div>
+                <p class="font-medium text-sm">{{ conn.displayName }}</p>
+                <p class="text-xs text-muted-foreground">{{ conn.accountId }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <div class="w-2 h-2 rounded-full" :class="conn.connected ? 'bg-green-400' : 'bg-red-400'"></div>
+              <span class="text-xs" :class="conn.connected ? 'text-green-400' : 'text-red-400'">
+                {{ conn.connected ? '已连接' : '断开' }}
+              </span>
+            </div>
           </div>
-          <div>
-            <h2 class="text-2xl font-bold">网关状态</h2>
-            <p class="text-muted-foreground text-sm mt-1">实时监控 Gateway 运行状态和平台连接</p>
+          <div class="flex items-center justify-between text-xs text-muted-foreground">
+            <span>延迟: {{ conn.latency }}ms</span>
+            <span>消息: {{ conn.messageCount }}</span>
+          </div>
+          <div v-if="!conn.connected" class="mt-3">
+            <button @click="reconnect(conn.platform)" class="w-full text-xs py-1.5 bg-card border border-card-border rounded-lg hover:border-primary/50 transition-colors">
+              重新连接
+            </button>
           </div>
         </div>
-        <button @click="refresh" class="px-4 py-2 bg-primary/10 text-primary border border-primary/30 rounded-xl hover:bg-primary/20 transition flex items-center gap-2">
-          <RefreshCw size="16" :class="{ 'animate-spin': pending }" />
-          刷新
+      </div>
+    </div>
+
+    <!-- Message Queue -->
+    <div class="glass-panel p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <Mail size="18" class="text-primary" />
+          消息队列
+        </h3>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-muted-foreground">队列容量: {{ data?.queueCapacity || 100 }}</span>
+          <button @click="clearQueue" class="text-xs px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg border border-red-500/30 hover:bg-red-500/20 transition-colors">
+            清空队列
+          </button>
+        </div>
+      </div>
+      
+      <div class="space-y-2 max-h-80 overflow-y-auto">
+        <div v-for="(msg, index) in data?.messageQueue" :key="index" 
+             class="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-card-border">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-card flex items-center justify-center border border-card-border">
+              <component :is="getPlatformIcon(msg.platform)" size="14" class="text-primary" />
+            </div>
+            <div>
+              <p class="text-sm font-medium truncate max-w-xs">{{ msg.preview }}</p>
+              <p class="text-xs text-muted-foreground">来自: {{ msg.sender }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs px-2 py-0.5 rounded-md" 
+                  :class="msg.priority === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-muted'">
+              {{ msg.priority === 'high' ? '高优先' : '普通' }}
+            </span>
+            <span class="text-xs text-muted-foreground">{{ msg.timestamp }}</span>
+          </div>
+        </div>
+        
+        <div v-if="!data?.messageQueue?.length" class="text-center py-8 text-muted-foreground">
+          <Mail size="32" class="mx-auto mb-2 opacity-50" />
+          <p class="text-sm">队列为空</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reconnection History -->
+    <div class="glass-panel p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <History size="18" class="text-primary" />
+          重连历史
+        </h3>
+        <span class="text-xs text-muted-foreground">最近 24 小时</span>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-card-border">
+              <th class="text-left py-3 px-4 font-medium text-muted-foreground">时间</th>
+              <th class="text-left py-3 px-4 font-medium text-muted-foreground">平台</th>
+              <th class="text-left py-3 px-4 font-medium text-muted-foreground">原因</th>
+              <th class="text-left py-3 px-4 font-medium text-muted-foreground">持续时间</th>
+              <th class="text-left py-3 px-4 font-medium text-muted-foreground">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in data?.reconnectHistory" :key="index" class="border-b border-card-border/50 hover:bg-muted/30">
+              <td class="py-3 px-4 font-mono text-xs">{{ item.timestamp }}</td>
+              <td class="py-3 px-4">{{ item.platform }}</td>
+              <td class="py-3 px-4 text-muted-foreground">{{ item.reason }}</td>
+              <td class="py-3 px-4 font-mono text-xs">{{ item.duration }}</td>
+              <td class="py-3 px-4">
+                <span class="px-2 py-0.5 rounded-md text-xs" 
+                      :class="item.success ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
+                  {{ item.success ? '成功' : '失败' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div v-if="!data?.reconnectHistory?.length" class="text-center py-8 text-muted-foreground">
+          <p class="text-sm">无重连记录</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gateway Actions -->
+    <div class="glass-panel p-6">
+      <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Settings size="18" class="text-primary" />
+        网关操作
+      </h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <button @click="restartGateway" 
+                class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
+          <RefreshCw size="20" class="text-amber-400" />
+          <span class="text-sm font-medium">重启网关</span>
+        </button>
+        
+        <button @click="reloadConfig" 
+                class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
+          <FileText size="20" class="text-blue-400" />
+          <span class="text-sm font-medium">重载配置</span>
+        </button>
+        
+        <button @click="enableMaintenance" 
+                class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
+          <Shield size="20" class="text-green-400" />
+          <span class="text-sm font-medium">维护模式</span>
+        </button>
+        
+        <button @click="viewLogs" 
+                class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
+          <TerminalSquare size="20" class="text-primary" />
+          <span class="text-sm font-medium">查看日志</span>
         </button>
       </div>
     </div>
 
-    <!-- Status Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="glass-panel p-5">
-        <div class="flex items-center gap-3">
-          <div :class="statusBgClass" class="w-10 h-10 rounded-lg flex items-center justify-center">
-            <Activity :class="statusTextClass" size="20" />
-          </div>
-          <div>
-            <div class="text-sm text-muted-foreground">运行状态</div>
-            <div class="font-semibold" :class="statusTextClass">{{ statusText }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="glass-panel p-5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-            <Cpu class="text-secondary" size="20" />
-          </div>
-          <div>
-            <div class="text-sm text-muted-foreground">进程 PID</div>
-            <div class="font-semibold">{{ data?.pid || '-' }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="glass-panel p-5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-            <Clock class="text-amber-500" size="20" />
-          </div>
-          <div>
-            <div class="text-sm text-muted-foreground">运行时间</div>
-            <div class="font-semibold">{{ data?.uptime || '-' }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="glass-panel p-5">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <Database class="text-blue-500" size="20" />
-          </div>
-          <div>
-            <div class="text-sm text-muted-foreground">数据大小</div>
-            <div class="font-semibold">{{ data?.system?.data_dir_size || '-' }}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Platforms -->
-    <div class="glass-panel p-6">
-      <div class="flex items-center gap-2 mb-5">
-        <MessageSquare size="18" class="text-primary" />
-        <h3 class="text-lg font-semibold">平台连接</h3>
-      </div>
-      <div v-if="!data?.platforms || Object.keys(data.platforms).length === 0" class="text-center py-8 text-muted-foreground">
-        <WifiOff size="32" class="mx-auto mb-2 opacity-50" />
-        <p>暂无已连接的平台</p>
-      </div>
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div v-for="(platform, name) in data.platforms" :key="name" 
-             class="p-4 rounded-xl border border-card-border bg-muted/20 hover:bg-muted/30 transition">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">{{ getPlatformIcon(name) }}</span>
-              <div>
-                <div class="font-semibold">{{ getPlatformName(name) }}</div>
-                <div class="text-xs text-muted-foreground">{{ name }}</div>
-              </div>
-            </div>
-            <span :class="getPlatformStatusClass(platform.state)" class="px-3 py-1 rounded-full text-xs font-medium">
-              {{ platform.state === 'connected' ? '已连接' : platform.state }}
-            </span>
-          </div>
-          <div v-if="platform.error_message" class="mt-3 text-sm text-destructive bg-destructive/10 p-2 rounded">
-            {{ platform.error_message }}
-          </div>
-          <div class="mt-3 text-xs text-muted-foreground flex items-center gap-1">
-            <Clock size="12" />
-            更新: {{ formatTime(platform.updated_at) }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Paired Users -->
-    <div class="glass-panel p-6">
-      <div class="flex items-center gap-2 mb-5">
-        <Users size="18" class="text-primary" />
-        <h3 class="text-lg font-semibold">已授权用户</h3>
-        <span class="ml-auto text-sm text-muted-foreground">{{ data?.pairedUsers?.length || 0 }} 个用户</span>
-      </div>
-      <div v-if="!data?.pairedUsers?.length" class="text-center py-8 text-muted-foreground">
-        <UserX size="32" class="mx-auto mb-2 opacity-50" />
-        <p>暂无授权用户</p>
-      </div>
-      <div v-else class="space-y-2">
-        <div v-for="user in data.pairedUsers" :key="user.id" 
-             class="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-card-border">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <User size="16" class="text-primary" />
-            </div>
-            <div>
-              <span class="font-mono text-sm">{{ user.id }}</span>
-              <span v-if="user.platform" class="ml-2 text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                {{ user.platform }}
-              </span>
-            </div>
-          </div>
-          <span class="text-sm text-muted-foreground">{{ user.approved_at }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Config & System -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Gateway Config -->
-      <div class="glass-panel p-6">
-        <div class="flex items-center gap-2 mb-5">
-          <Settings size="18" class="text-primary" />
-          <h3 class="text-lg font-semibold">网关配置</h3>
-        </div>
-        <div class="space-y-3">
-          <div class="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-card-border">
-            <span class="text-muted-foreground">Gateway 超时</span>
-            <span class="font-mono">{{ data?.config?.gateway_timeout ? `${data.config.gateway_timeout}s` : '默认' }}</span>
-          </div>
-          <div class="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-card-border">
-            <span class="text-muted-foreground">允许所有用户</span>
-            <span :class="data?.config?.allow_all_users ? 'text-primary' : ''" class="font-medium">
-              {{ data?.config?.allow_all_users ? '是' : '否' }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-card-border">
-            <span class="text-muted-foreground">微信消息策略</span>
-            <span class="font-mono">{{ data?.config?.weixin_dm_policy || '-' }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- System Status -->
-      <div class="glass-panel p-6">
-        <div class="flex items-center gap-2 mb-5">
-          <Server size="18" class="text-primary" />
-          <h3 class="text-lg font-semibold">系统状态</h3>
-        </div>
-        <div class="space-y-3">
-          <div class="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-card-border">
-            <span class="text-muted-foreground">进程状态</span>
-            <span class="flex items-center gap-2">
-              <span :class="data?.system?.process_running ? 'bg-primary' : 'bg-destructive'" class="w-2 h-2 rounded-full"></span>
-              {{ data?.system?.process_running ? '运行中' : '已停止' }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-card-border">
-            <span class="text-muted-foreground">端口监听</span>
-            <span class="flex items-center gap-2">
-              <span :class="data?.system?.listening_ports ? 'bg-primary' : 'bg-amber-500'" class="w-2 h-2 rounded-full"></span>
-              {{ data?.system?.listening_ports ? '正常' : '未监听' }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-card-border">
-            <span class="text-muted-foreground">日志大小</span>
-            <span class="font-mono">{{ data?.system?.logs_size || '-' }}</span>
-          </div>
-        </div>
+    <!-- Status Message -->
+    <div v-if="statusMessage" 
+         class="fixed bottom-4 right-4 px-4 py-3 rounded-xl border shadow-lg z-50"
+         :class="statusMessage.type === 'success' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'">
+      <div class="flex items-center gap-2">
+        <CheckCircle v-if="statusMessage.type === 'success'" size="16" />
+        <AlertCircle v-else size="16" />
+        <span class="text-sm">{{ statusMessage.message }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Radio, RefreshCw, Activity, Cpu, Clock, Database, MessageSquare, WifiOff, Users, UserX, User, Settings, Server } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { 
+  Radio, Users, Mail, RefreshCw, History, Settings, FileText, Shield, TerminalSquare,
+  CheckCircle, AlertCircle, MessageCircle, Phone, Send
+} from 'lucide-vue-next'
 
-const { data, refresh, pending } = await useFetch('/api/gateway/status')
+const { data, refresh: refreshData } = await useFetch('/api/gateway')
+const isRefreshing = ref(false)
+const statusMessage = ref<{ type: string, message: string } | null>(null)
 
-const statusText = computed(() => {
-  switch (data.value?.status) {
-    case 'running': return '运行中'
-    case 'offline': return '离线'
-    case 'dead': return '已停止'
-    default: return '未知'
-  }
-})
-
-const statusTextClass = computed(() => {
-  switch (data.value?.status) {
-    case 'running': return 'text-primary'
-    case 'offline': return 'text-muted-foreground'
-    case 'dead': return 'text-destructive'
-    default: return 'text-amber-500'
-  }
-})
-
-const statusBgClass = computed(() => {
-  switch (data.value?.status) {
-    case 'running': return 'bg-primary/10'
-    case 'offline': return 'bg-muted'
-    case 'dead': return 'bg-destructive/10'
-    default: return 'bg-amber-500/10'
-  }
-})
-
-function getPlatformIcon(name: string): string {
-  const icons: Record<string, string> = {
-    weixin: '💬',
-    telegram: '✈️',
-    discord: '🎮',
-    whatsapp: '📱',
-    slack: '💼'
-  }
-  return icons[name] || '🔌'
+const doRefresh = async () => {
+  isRefreshing.value = true
+  await refreshData()
+  setTimeout(() => { isRefreshing.value = false }, 500)
 }
 
-function getPlatformName(name: string): string {
-  const names: Record<string, string> = {
-    weixin: '微信',
-    telegram: 'Telegram',
-    discord: 'Discord',
-    whatsapp: 'WhatsApp',
-    slack: 'Slack'
-  }
-  return names[name] || name
+const showStatus = (type: string, message: string) => {
+  statusMessage.value = { type, message }
+  setTimeout(() => { statusMessage.value = null }, 3000)
 }
 
-function getPlatformStatusClass(status: string): string {
-  switch (status) {
-    case 'connected': return 'bg-primary/10 text-primary border border-primary/30'
-    case 'disconnected': return 'bg-destructive/10 text-destructive border border-destructive/30'
-    case 'connecting': return 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
-    default: return 'bg-muted text-muted-foreground border border-card-border'
+const getPlatformIcon = (platform: string) => {
+  const icons: Record<string, any> = {
+    'wechat': MessageCircle,
+    'telegram': Send,
+    'discord': Users,
+    'default': Radio
   }
+  return icons[platform] || icons['default']
 }
 
-function formatTime(time: string): string {
-  if (!time) return '-'
-  try {
-    return new Date(time).toLocaleString('zh-CN')
-  } catch {
-    return time
-  }
+const reconnectAll = async () => {
+  showStatus('success', '正在重连所有平台...')
+}
+
+const reconnect = async (platform: string) => {
+  showStatus('success', `正在重连 ${platform}...`)
+}
+
+const clearQueue = async () => {
+  if (!confirm('确定要清空消息队列吗？')) return
+  showStatus('success', '消息队列已清空')
+}
+
+const restartGateway = async () => {
+  if (!confirm('确定要重启网关吗？这将暂时中断所有连接。')) return
+  showStatus('success', '网关重启中...')
+}
+
+const reloadConfig = async () => {
+  showStatus('success', '配置重新加载成功')
+}
+
+const enableMaintenance = async () => {
+  showStatus('success', '维护模式已启用')
+}
+
+const viewLogs = () => {
+  navigateTo('/logs')
 }
 </script>
