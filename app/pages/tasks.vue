@@ -369,15 +369,15 @@ const editTask = (task: any) => {
 }
 
 const deleteTask = async (task: any) => {
-  if (!confirm(`确定要删除任务 #${task.id} "${task.title}" 吗？`)) return
-  
+  // 直接删除，不使用 confirm
   try {
     await $fetch(`/api/tasks/queue?id=${task.id}`, { method: 'DELETE' })
-    showToast('success', '任务已删除')
+    showToast('success', `任务 #${task.id} 已删除`)
     loadTasks()
     loadStats()
-  } catch (e) {
-    showToast('error', '删除失败')
+  } catch (e: any) {
+    const msg = e.data?.error || '删除失败'
+    showToast('error', msg)
   }
 }
 
