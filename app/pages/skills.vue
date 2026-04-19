@@ -88,6 +88,26 @@
             </div>
           </div>
           
+          <!-- Execution Stats -->
+          <div v-if="skillDetail.stats" class="grid grid-cols-4 gap-3 mt-4">
+            <div class="bg-muted/30 p-2 rounded-lg text-center">
+              <p class="text-lg font-bold font-mono text-primary">{{ skillDetail.stats.calls }}</p>
+              <p class="text-xs text-muted-foreground">调用次数</p>
+            </div>
+            <div class="bg-muted/30 p-2 rounded-lg text-center">
+              <p class="text-lg font-bold font-mono text-green-400">{{ skillDetail.stats.successRate }}%</p>
+              <p class="text-xs text-muted-foreground">成功率</p>
+            </div>
+            <div class="bg-muted/30 p-2 rounded-lg text-center">
+              <p class="text-lg font-bold font-mono text-blue-400">{{ skillDetail.stats.avgTime }}ms</p>
+              <p class="text-xs text-muted-foreground">平均耗时</p>
+            </div>
+            <div class="bg-muted/30 p-2 rounded-lg text-center">
+              <p class="text-lg font-bold font-mono text-amber-400">{{ skillDetail.stats.lastUsed }}</p>
+              <p class="text-xs text-muted-foreground">最后使用</p>
+            </div>
+          </div>
+          
           <!-- Tags -->
           <div v-if="skillDetail.skill.tags?.length" class="flex flex-wrap gap-1.5 mt-3">
             <span v-for="tag in skillDetail.skill.tags" :key="tag"
