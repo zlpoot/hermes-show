@@ -108,6 +108,34 @@
       </div>
     </div>
 
+    <!-- Paired Users -->
+    <div v-if="data?.pairedUsers?.length" class="glass-panel p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <Users size="18" class="text-primary" />
+          配对用户
+        </h3>
+        <span class="text-xs text-muted-foreground">{{ data?.pairedUsers?.length || 0 }} 个已授权</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div v-for="user in data?.pairedUsers" :key="user.id" 
+             class="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-card-border">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+              <component :is="getPlatformIcon(user.platform)" size="14" class="text-primary" />
+            </div>
+            <div>
+              <p class="text-sm font-medium font-mono truncate max-w-[180px]">{{ user.id.slice(0, 20) }}{{ user.id.length > 20 ? '...' : '' }}</p>
+              <p class="text-xs text-muted-foreground">{{ user.approved_at }}</p>
+            </div>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-md bg-primary/20 text-primary">
+            {{ user.platform }}
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- Message Queue -->
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
