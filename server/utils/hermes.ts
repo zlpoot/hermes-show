@@ -42,18 +42,12 @@ export const getHermesDB = () => {
   
   try {
     if (fs.existsSync(dbPath)) {
-      // Create a valid file URL for Prisma
-      // Handle WSL UNC paths correctly
-      let url = `file:${dbPath.replace(/\\/g, '/')}`
-      console.log('[hermes] Prisma URL:', url)
+      // Set DATABASE_URL environment variable for Prisma
+      const dbUrl = `file:${dbPath}`
+      process.env.DATABASE_URL = dbUrl
+      console.log('[hermes] DATABASE_URL set to:', dbUrl)
       
-      prisma = new PrismaClient({
-        datasources: {
-          db: {
-            url: url
-          }
-        }
-      })
+      prisma = new PrismaClient()
       console.log('[hermes] Prisma client created successfully')
       return prisma
     }

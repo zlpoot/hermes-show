@@ -24,10 +24,24 @@
           <input 
             type="text" 
             v-model="searchQuery" 
-            @input="debouncedSearch"
+            @input="debouncedSearch" 
             placeholder="搜索历史对话..." 
             class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
           <Loader2 v-if="isSearching" size="14" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
+        </div>
+        
+        <!-- Type Filter -->
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button 
+            v-for="p in platforms" 
+            :key="p.id"
+            @click="toggleType(p.id)"
+            class="text-xs px-2 py-1 rounded-full border transition-all"
+            :class="selectedTypes.includes(p.id) 
+              ? 'bg-primary/20 border-primary text-primary' 
+              : 'bg-background border-card-border text-muted-foreground hover:border-primary/50'">
+            {{ p.name }} ({{ p.count }})
+          </button>
         </div>
       </div>
       
@@ -46,7 +60,7 @@
             <h4 class="text-sm font-medium line-clamp-1" :class="activeSession === session.id ? 'text-primary' : 'text-foreground'">{{ session.title }}</h4>
             <div class="flex items-center justify-between mt-2">
               <span class="text-xs text-muted-foreground">{{ session.date }}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-card-border/50 text-muted-foreground">{{ session.platform }}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-card-border/50 text-muted-foreground">{{ session.platformDisplay || session.platform }}</span>
             </div>
           </div>
         </div>
@@ -168,7 +182,17 @@ const router = useRouter()
 
 const searchQuery = ref('')
 const isSearching = ref(false)
-const { data, refresh } = await useFetch('/api/history')
+
+// Type filter - default: exclude cron
+const selectedTypes = ref<string[]>([])
+const platforms = ref<{ id: string; name: string; count: number }[]>([])
+
+// Fetch sessions with type filter
+const { data, refresh } = await useFetch('/api/history', {
+  query: computed(() => ({
+    types: selectedTypes.value.join(',') || undefined
+  }))
+})
 
 const sessions = computed(() => data.value?.sessions || [])
 const activeSession = ref((route.query.id as string) || sessions.value[0]?.id || '')
@@ -181,6 +205,29 @@ const isDeleting = ref(false)
 const messageFilter = ref('')
 const roleFilter = ref('')
 const showExportMenu = ref(false)
+
+// Initialize platforms from API response
+watch(data, (newData) => {
+  if (newData?.platforms) {
+    platforms.value = newData.platforms
+    // Auto-select all types except cron on first load
+    if (selectedTypes.value.length === 0) {
+      selectedTypes.value = newData.platforms
+        .filter((p: any) => p.id !== 'cron')
+        .map((p: any) => p.id)
+    }
+  }
+}, { immediate: true })
+
+// Toggle type selection
+const toggleType = (typeId: string) => {
+  const idx = selectedTypes.value.indexOf(typeId)
+  if (idx > -1) {
+    selectedTypes.value.splice(idx, 1)
+  } else {
+    selectedTypes.value.push(typeId)
+  }
+}
 
 // Filter messages by content and role
 const filteredMessages = computed(() => {
@@ -272,7 +319,7 @@ const debouncedSearch = () => {
     try {
       const query = searchQuery.value.trim()
       if (query) {
-        const { data: searchData } = await useFetch(`/api/history?q=${encodeURIComponent(query)}`)
+        const { data: searchData } = await useFetch(`/api/history?q=${encodeURIComponent(query)}&types=${selectedTypes.value.join(',')}`)
         if (searchData.value) {
           data.value = searchData.value
         }

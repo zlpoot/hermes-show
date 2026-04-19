@@ -5,6 +5,11 @@ import os from 'node:os'
 export default defineEventHandler(async (event) => {
   const prisma = getHermesDB()
   
+  // Calculate today's start timestamp (midnight local time)
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayStartTs = Math.floor(startOfToday.getTime() / 1000)
+  
   // Default stats
   const stats = {
     todayTokens: '0',
@@ -29,20 +34,22 @@ export default defineEventHandler(async (event) => {
       } catch(e) {}
       
       // Today's sessions count (started_at is Unix timestamp)
+      // Use JavaScript-calculated today's start time (local timezone)
       try {
         const todayResult: any[] = await prisma.$queryRaw`
           SELECT COUNT(*) as count FROM sessions 
-          WHERE started_at > (strftime('%s', 'now', '-1 day'))
+          WHERE started_at >= ${todayStartTs}
         `
         stats.todaySessions = Number(todayResult[0]?.count || 0)
       } catch(e) {}
       
       // Today's tokens (started_at is Unix timestamp)
+      // Use JavaScript-calculated today's start time (local timezone)
       try {
         const totalTokensRow: any[] = await prisma.$queryRaw`
-          SELECT SUM(input_tokens + output_tokens) as total 
-          FROM sessions 
-          WHERE started_at > (strftime('%s', 'now', '-1 day'))
+          SELECT SUM(input_tokens + output_tokens) as total
+          FROM sessions
+          WHERE started_at >= ${todayStartTs}
         `
         if (totalTokensRow && totalTokensRow.length > 0 && totalTokensRow[0].total) {
           stats.todayTokens = formatTokens(Number(totalTokensRow[0].total))
