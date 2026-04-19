@@ -1,5 +1,6 @@
 <template>
-  <div class="h-[calc(100vh-10rem)] flex flex-col gap-6">
+  <div class="h-full flex flex-col gap-4 p-6 overflow-hidden">
+    <!-- Header -->
     <div class="flex items-center justify-between glass-panel p-4 shrink-0">
       <div class="flex items-center gap-4">
         <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
@@ -69,33 +70,44 @@
     </div>
 
     <!-- Terminal Emulator -->
-    <div class="flex-1 bg-[#050505] border border-card-border rounded-xl shadow-2xl overflow-hidden flex flex-col font-mono text-sm relative group">
+    <div class="flex-1 min-h-0 bg-[#050505] border border-card-border rounded-xl shadow-2xl flex flex-col font-mono text-sm">
       <!-- Terminal Header -->
-      <div class="h-8 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 shrink-0">
+      <div class="h-9 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 shrink-0 rounded-t-xl">
         <div class="flex items-center gap-1.5">
           <div class="w-3 h-3 rounded-full bg-red-500"></div>
           <div class="w-3 h-3 rounded-full bg-amber-500"></div>
           <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
         </div>
-        <div class="flex-1 text-center text-xs text-zinc-500">hermes@server: ~/.hermes/logs/{{ selectedFile }}</div>
-        <div class="text-xs text-zinc-500">{{ filteredLogs.length }} 条日志</div>
+        <div class="flex-1 text-center text-xs text-zinc-500 truncate px-4">hermes@server: ~/.hermes/logs/{{ selectedFile }}</div>
+        <div class="text-xs text-zinc-500 shrink-0">{{ filteredLogs.length }} 条</div>
       </div>
       
-      <!-- Terminal Body -->
-      <div ref="logContainer" class="flex-1 overflow-y-auto p-4 space-y-1.5 select-text selection:bg-emerald-500/30">
+      <!-- Terminal Body - 关键修复: overflow-auto 和 will-change -->
+      <div 
+        ref="logContainer" 
+        class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4"
+        style="contain: strict;"
+      >
         <div v-if="filteredLogs.length === 0" class="text-center text-zinc-500 py-8">
           没有匹配的日志记录
         </div>
-        <div v-for="(log, idx) in filteredLogs" :key="idx" class="flex gap-3 hover:bg-white/5 transition-colors px-2 py-0.5 rounded" :class="getLogColor(log.level)">
-          <span class="text-zinc-600 shrink-0 w-24">{{ log.time }}</span>
-          <span class="shrink-0 w-16" :class="getLevelBg(log.level)">[{{ log.level }}]</span>
-          <span class="shrink-0 w-24 text-zinc-400">[{{ log.source }}]</span>
+        
+        <!-- 使用唯一的 log.id 作为 key，避免重影 -->
+        <div 
+          v-for="log in filteredLogs" 
+          :key="log.id" 
+          class="flex gap-3 hover:bg-white/5 transition-colors px-2 py-0.5 rounded group"
+          :class="getLogColor(log.level)"
+        >
+          <span class="text-zinc-600 shrink-0 w-20">{{ log.time }}</span>
+          <span class="shrink-0 w-14 text-center" :class="getLevelBg(log.level)">[{{ log.level }}]</span>
+          <span class="shrink-0 w-20 text-zinc-400 truncate" :title="log.source">[{{ log.source }}]</span>
           <span class="flex-1 whitespace-pre-wrap break-words" v-html="highlightKeyword(log.message)"></span>
         </div>
         
         <!-- Blinking Cursor -->
-        <div v-if="!isPaused" class="flex gap-3 px-2 py-0.5 text-zinc-600">
-          <span class="w-24"></span>
+        <div v-if="!isPaused && filteredLogs.length > 0" class="flex gap-3 px-2 py-0.5 text-zinc-600">
+          <span class="w-20"></span>
           <span class="w-2 h-4 bg-emerald-500/50 animate-[blink_1s_infinite]"></span>
         </div>
       </div>
@@ -104,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { Terminal, Trash2, Pause, Play, Search } from 'lucide-vue-next'
 
 const logContainer = ref<HTMLElement | null>(null)
@@ -125,7 +137,28 @@ const logLevels = [
 ]
 
 const { data, refresh } = await useFetch(() => `/api/logs?file=${selectedFile.value}&lines=${linesCount.value}`)
-const logs = ref(data.value?.logs || [])
+
+interface LogEntry {
+  id: string
+  time: string
+  level: string
+  source: string
+  message: string
+}
+
+const logs = ref<LogEntry[]>([])
+
+// 为每条日志生成唯一ID
+let logIdCounter = 0
+const generateLogId = () => `log-${Date.now()}-${logIdCounter++}`
+
+// 初始化日志数据
+const initLogs = (rawLogs: any[]) => {
+  logs.value = rawLogs.map((log, idx) => ({
+    ...log,
+    id: log.id || generateLogId()
+  }))
+}
 
 const filteredLogs = computed(() => {
   let result = logs.value
@@ -159,7 +192,7 @@ const toggleLevel = (level: string) => {
 const refreshLogs = async () => {
   await refresh()
   if (data.value?.logs) {
-    logs.value = data.value.logs
+    initLogs(data.value.logs)
   }
   nextTick(() => scrollToBottom())
 }
@@ -177,21 +210,28 @@ const getLogColor = (level: string) => {
 
 const getLevelBg = (level: string) => {
   switch(level) {
-    case 'ERROR': return 'bg-red-500/10 px-1 rounded'
-    case 'WARN': return 'bg-amber-500/10 px-1 rounded'
-    case 'SUCCESS': return 'bg-emerald-500/10 px-1 rounded'
+    case 'ERROR': return 'bg-red-500/10 px-1 rounded text-red-400'
+    case 'WARN': return 'bg-amber-500/10 px-1 rounded text-amber-400'
+    case 'SUCCESS': return 'bg-emerald-500/10 px-1 rounded text-emerald-400'
+    case 'INFO': return 'bg-blue-500/10 px-1 rounded text-blue-400'
+    case 'DEBUG': return 'bg-zinc-500/10 px-1 rounded text-zinc-400'
     default: return ''
   }
 }
 
 const highlightKeyword = (message: string) => {
   if (!searchKeyword.value.trim()) return message
-  const regex = new RegExp(`(${searchKeyword.value})`, 'gi')
-  return message.replace(regex, '<mark class="bg-yellow-500/30 text-yellow-300 px-0.5 rounded">$1</mark>')
+  try {
+    const regex = new RegExp(`(${searchKeyword.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    return message.replace(regex, '<mark class="bg-yellow-500/30 text-yellow-300 px-0.5 rounded">$1</mark>')
+  } catch {
+    return message
+  }
 }
 
 const clearLogs = () => {
   logs.value = []
+  logIdCounter = 0
 }
 
 const togglePause = () => {
@@ -207,6 +247,10 @@ const scrollToBottom = () => {
 let intervalId: ReturnType<typeof setInterval>
 
 onMounted(() => {
+  // 初始化日志
+  if (data.value?.logs) {
+    initLogs(data.value.logs)
+  }
   scrollToBottom()
   
   // Polling logs every 3 seconds
@@ -232,6 +276,7 @@ onMounted(() => {
       const randomMsg = mockMessages[Math.floor(Math.random() * mockMessages.length)]
       
       logs.value.push({
+        id: generateLogId(),
         time: timeStr,
         ...randomMsg
       })
