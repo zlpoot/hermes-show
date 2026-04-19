@@ -16,6 +16,16 @@
           <component :is="item.icon" size="18" :class="route.path === item.path ? 'text-primary' : 'group-hover:text-primary/70 transition-colors'" />
           <span class="font-medium">{{ item.name }}</span>
         </NuxtLink>
+        
+        <!-- 文档链接 -->
+        <div class="mt-4 pt-4 border-t border-card-border">
+          <NuxtLink to="/docs" target="_blank"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-muted-foreground hover:bg-muted/50 hover:text-foreground group">
+            <BookOpen size="18" class="group-hover:text-primary/70 transition-colors" />
+            <span class="font-medium">文档</span>
+            <ExternalLink size="14" class="ml-auto opacity-50" />
+          </NuxtLink>
+        </div>
       </nav>
       
       <div class="p-4 border-t border-card-border">
@@ -63,7 +73,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { LayoutDashboard, SlidersHorizontal, History, TerminalSquare, Bot, Settings, Cpu, User, BookOpen, Clock, Radio } from 'lucide-vue-next'
+import { LayoutDashboard, SlidersHorizontal, History, TerminalSquare, Bot, Settings, Cpu, User, BookOpen, Clock, Radio, ExternalLink } from 'lucide-vue-next'
 
 const route = useRoute()
 
