@@ -62,54 +62,57 @@
       </div>
     </div>
 
-    <!-- Main Content Area -->
+    <!-- Main Content Area - 改为垂直堆叠 -->
     <div class="flex-1 min-h-0 flex gap-4">
-      <!-- Left: Channels & Rules -->
+      <!-- Left: Channels & Rules 垂直排列 -->
       <div class="flex-1 min-h-0 flex flex-col gap-4">
         <!-- Notification Channels -->
-        <div class="glass-panel p-4 flex-1 min-h-0 flex flex-col">
-          <div class="flex items-center justify-between mb-4 shrink-0">
+        <div class="glass-panel p-4 min-h-[200px] flex flex-col" style="flex: 1 1 45%;">
+          <div class="flex items-center justify-between mb-3 shrink-0">
             <h3 class="font-semibold flex items-center gap-2">
               <Radio size="16" class="text-primary" />
               通知渠道
+              <span class="text-xs text-muted-foreground font-normal">({{ channels.length }})</span>
             </h3>
             <button @click="openChannelModal()" class="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-lg border border-primary/30 hover:bg-primary/20 transition-colors flex items-center gap-1">
               <Plus size="14" /> 添加
             </button>
           </div>
           
-          <div class="flex-1 min-h-0 overflow-y-auto space-y-2">
-            <div v-for="channel in channels" :key="channel.id" 
-                 class="p-3 bg-muted/30 rounded-xl border border-card-border hover:border-primary/30 transition-colors">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-lg bg-card flex items-center justify-center border border-card-border">
-                    <component :is="getChannelIcon(channel.type)" size="18" :class="channel.enabled ? 'text-primary' : 'text-muted-foreground'" />
-                  </div>
-                  <div>
-                    <p class="font-medium text-sm">{{ channel.name }}</p>
-                    <p class="text-xs text-muted-foreground">{{ channel.description }}</p>
-                  </div>
-                </div>
-                
-                <div class="flex items-center gap-2">
-                  <span class="text-xs text-muted-foreground hidden sm:block">{{ channel.todaySent }} 条/今日</span>
-                  <label class="flex items-center cursor-pointer">
-                    <div class="relative">
-                      <input type="checkbox" v-model="channel.enabled" @change="toggleChannel(channel)" class="sr-only" />
-                      <div class="w-8 h-4 bg-muted rounded-full transition-colors" :class="{ 'bg-primary': channel.enabled }"></div>
-                      <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform" :class="{ 'translate-x-4': channel.enabled }"></div>
+          <div class="flex-1 min-h-0 overflow-y-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div v-for="channel in channels" :key="channel.id" 
+                   class="p-3 bg-muted/30 rounded-xl border border-card-border hover:border-primary/30 transition-colors">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-card flex items-center justify-center border border-card-border">
+                      <component :is="getChannelIcon(channel.type)" size="18" :class="channel.enabled ? 'text-primary' : 'text-muted-foreground'" />
                     </div>
-                  </label>
-                  <button @click="testChannel(channel)" class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-primary" title="测试">
-                    <TestTube size="14" />
-                  </button>
-                  <button @click="openChannelModal(channel)" class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-blue-400" title="编辑">
-                    <Pencil size="14" />
-                  </button>
-                  <button @click="deleteChannel(channel)" class="p-1.5 hover:bg-red-500/10 rounded transition-colors text-muted-foreground hover:text-red-400" title="删除">
-                    <Trash2 size="14" />
-                  </button>
+                    <div>
+                      <p class="font-medium text-sm">{{ channel.name }}</p>
+                      <p class="text-xs text-muted-foreground">{{ channel.description }}</p>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs text-muted-foreground mr-1">{{ channel.todaySent }}条</span>
+                    <label class="flex items-center cursor-pointer">
+                      <div class="relative">
+                        <input type="checkbox" v-model="channel.enabled" @change="toggleChannel(channel)" class="sr-only" />
+                        <div class="w-8 h-4 bg-muted rounded-full transition-colors" :class="{ 'bg-primary': channel.enabled }"></div>
+                        <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform" :class="{ 'translate-x-4': channel.enabled }"></div>
+                      </div>
+                    </label>
+                    <button @click="testChannel(channel)" class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-primary" title="测试">
+                      <TestTube size="14" />
+                    </button>
+                    <button @click="openChannelModal(channel)" class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-blue-400" title="编辑">
+                      <Pencil size="14" />
+                    </button>
+                    <button @click="deleteChannel(channel)" class="p-1.5 hover:bg-red-500/10 rounded transition-colors text-muted-foreground hover:text-red-400" title="删除">
+                      <Trash2 size="14" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -122,56 +125,59 @@
         </div>
 
         <!-- Notification Rules -->
-        <div class="glass-panel p-4 flex-1 min-h-0 flex flex-col">
-          <div class="flex items-center justify-between mb-4 shrink-0">
+        <div class="glass-panel p-4 min-h-[200px] flex flex-col" style="flex: 1 1 55%;">
+          <div class="flex items-center justify-between mb-3 shrink-0">
             <h3 class="font-semibold flex items-center gap-2">
               <BellRing size="16" class="text-primary" />
               通知规则
+              <span class="text-xs text-muted-foreground font-normal">({{ rules.length }})</span>
             </h3>
             <button @click="openRuleModal()" class="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-lg border border-primary/30 hover:bg-primary/20 transition-colors flex items-center gap-1">
               <Plus size="14" /> 新建
             </button>
           </div>
           
-          <div class="flex-1 min-h-0 overflow-y-auto space-y-2">
-            <div v-for="rule in rules" :key="rule.id" 
-                 class="p-3 bg-muted/30 rounded-xl border border-card-border hover:border-primary/30 transition-colors">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center border border-card-border"
-                       :class="getEventBgColor(rule.eventType)">
-                    <component :is="getEventIcon(rule.eventType)" size="14" :class="getEventColor(rule.eventType)" />
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <p class="font-medium text-sm">{{ rule.name }}</p>
-                      <span class="px-1.5 py-0.5 rounded text-xs" 
-                            :class="getSeverityClass(rule.severity)">
-                        {{ getSeverityLabel(rule.severity) }}
-                      </span>
+          <div class="flex-1 min-h-0 overflow-y-auto">
+            <div class="space-y-2">
+              <div v-for="rule in rules" :key="rule.id" 
+                   class="p-3 bg-muted/30 rounded-xl border border-card-border hover:border-primary/30 transition-colors">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center border border-card-border"
+                         :class="getEventBgColor(rule.eventType)">
+                      <component :is="getEventIcon(rule.eventType)" size="14" :class="getEventColor(rule.eventType)" />
                     </div>
-                    <p class="text-xs text-muted-foreground">{{ rule.description }}</p>
-                  </div>
-                </div>
-                
-                <div class="flex items-center gap-2">
-                  <div class="flex items-center gap-1 text-xs text-muted-foreground">
-                    <component :is="getChannelIcon(rule.channel)" size="12" />
-                    <span class="hidden sm:inline">{{ rule.channelName }}</span>
-                  </div>
-                  <label class="flex items-center cursor-pointer">
-                    <div class="relative">
-                      <input type="checkbox" v-model="rule.enabled" @change="toggleRule(rule)" class="sr-only" />
-                      <div class="w-8 h-4 bg-muted rounded-full transition-colors" :class="{ 'bg-primary': rule.enabled }"></div>
-                      <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform" :class="{ 'translate-x-4': rule.enabled }"></div>
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <p class="font-medium text-sm">{{ rule.name }}</p>
+                        <span class="px-1.5 py-0.5 rounded text-xs" 
+                              :class="getSeverityClass(rule.severity)">
+                          {{ getSeverityLabel(rule.severity) }}
+                        </span>
+                      </div>
+                      <p class="text-xs text-muted-foreground">{{ rule.description }}</p>
                     </div>
-                  </label>
-                  <button @click="openRuleModal(rule)" class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-blue-400" title="编辑">
-                    <Pencil size="14" />
-                  </button>
-                  <button @click="deleteRule(rule)" class="p-1.5 hover:bg-red-500/10 rounded transition-colors text-muted-foreground hover:text-red-400" title="删除">
-                    <Trash2 size="14" />
-                  </button>
+                  </div>
+                  
+                  <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1 text-xs text-muted-foreground">
+                      <component :is="getChannelIcon(rule.channel)" size="12" />
+                      <span>{{ rule.channelName }}</span>
+                    </div>
+                    <label class="flex items-center cursor-pointer">
+                      <div class="relative">
+                        <input type="checkbox" v-model="rule.enabled" @change="toggleRule(rule)" class="sr-only" />
+                        <div class="w-8 h-4 bg-muted rounded-full transition-colors" :class="{ 'bg-primary': rule.enabled }"></div>
+                        <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform" :class="{ 'translate-x-4': rule.enabled }"></div>
+                      </div>
+                    </label>
+                    <button @click="openRuleModal(rule)" class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-blue-400" title="编辑">
+                      <Pencil size="14" />
+                    </button>
+                    <button @click="deleteRule(rule)" class="p-1.5 hover:bg-red-500/10 rounded transition-colors text-muted-foreground hover:text-red-400" title="删除">
+                      <Trash2 size="14" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -185,7 +191,7 @@
       </div>
 
       <!-- Right: Event Types & History -->
-      <div class="w-80 shrink-0 flex flex-col gap-4">
+      <div class="w-72 shrink-0 flex flex-col gap-4">
         <!-- Event Types -->
         <div class="glass-panel p-4 flex-1 min-h-0 flex flex-col">
           <h3 class="font-semibold mb-3 flex items-center gap-2 shrink-0">
@@ -212,8 +218,8 @@
                   </div>
                 </label>
               </div>
-              <p class="text-xs text-muted-foreground">{{ eventType.description }}</p>
-              <div class="mt-1 text-xs text-muted-foreground">
+              <p class="text-xs text-muted-foreground pl-8">{{ eventType.description }}</p>
+              <div class="mt-1 text-xs text-muted-foreground pl-8">
                 触发: <span class="font-mono">{{ eventType.triggerCount }}</span> 次
               </div>
             </div>
@@ -221,7 +227,7 @@
         </div>
 
         <!-- Recent Notifications -->
-        <div class="glass-panel p-4 h-64 shrink-0 flex flex-col">
+        <div class="glass-panel p-4 h-56 shrink-0 flex flex-col">
           <div class="flex items-center justify-between mb-3 shrink-0">
             <h3 class="font-semibold flex items-center gap-2">
               <History size="16" class="text-primary" />
@@ -236,7 +242,7 @@
             <div v-for="notif in recentNotifications" :key="notif.id" 
                  class="p-2 bg-muted/30 rounded-lg border border-card-border">
               <div class="flex items-start gap-2">
-                <div class="w-6 h-6 rounded flex items-center justify-center border border-card-border shrink-0"
+                <div class="w-5 h-5 rounded flex items-center justify-center border border-card-border shrink-0"
                      :class="getEventBgColor(notif.eventType)">
                   <component :is="getEventIcon(notif.eventType)" size="10" :class="getEventColor(notif.eventType)" />
                 </div>

@@ -31,117 +31,308 @@ cli:
 
     <p>支持多种通知渠道，可在通知设置页面配置：</p>
 
-    <h3>Telegram</h3>
+    <!-- ==================== Telegram ==================== -->
+    <h3 id="telegram">Telegram</h3>
     
     <p>通过 Telegram Bot 发送通知，需要创建 Bot 并获取配置信息。</p>
     
+    <h4>步骤一：创建 Telegram Bot</h4>
+    <ol>
+      <li>在 Telegram 中搜索 <code>@BotFather</code></li>
+      <li>发送 <code>/newbot</code> 命令</li>
+      <li>按照提示输入 Bot 名称和用户名</li>
+      <li>保存返回的 <strong>Bot Token</strong>（格式：<code>123456789:ABCdefGHIjklMNOpqrsTUVwxyz</code>）</li>
+    </ol>
+
+    <h4>步骤二：获取 Chat ID</h4>
+    
+    <p><strong>方法一：通过 API 获取</strong></p>
+    <pre><code># 1. 先给你的 Bot 发送一条消息
+# 2. 访问以下 URL（替换 YOUR_BOT_TOKEN）
+https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates
+
+# 3. 在返回的 JSON 中找到 chat.id</code></pre>
+
+    <p><strong>方法二：使用 @userinfobot</strong></p>
+    <ol>
+      <li>在 Telegram 中搜索 <code>@userinfobot</code></li>
+      <li>发送任意消息</li>
+      <li>它会返回你的 Chat ID</li>
+    </ol>
+
+    <p><strong>群组 Chat ID</strong>：格式通常为 <code>-1001234567890</code>（负数开头）</p>
+
+    <h4>步骤三：在 Hermes 中配置</h4>
     <table>
       <thead>
         <tr>
           <th>参数</th>
           <th>说明</th>
+          <th>示例</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><code>Bot Token</code></td>
           <td>从 @BotFather 获取的 Bot 令牌</td>
+          <td><code>123456789:ABCdef...</code></td>
         </tr>
         <tr>
           <td><code>Chat ID</code></td>
-          <td>目标聊天 ID（用户、群组或频道）</td>
+          <td>目标聊天 ID</td>
+          <td><code>-1001234567890</code></td>
         </tr>
       </tbody>
     </table>
 
-    <p>获取 Chat ID 的方法：</p>
-    <pre><code># 1. 给你的 Bot 发送一条消息
-# 2. 访问以下 URL（替换 YOUR_TOKEN）
-https://api.telegram.org/botYOUR_TOKEN/getUpdates
+    <h4>测试配置</h4>
+    <pre><code># 测试 Bot Token 是否有效
+curl "https://api.telegram.org/botYOUR_TOKEN/getMe"
 
-# 3. 或使用 @userinfobot 获取</code></pre>
+# 测试发送消息
+curl -X POST "https://api.telegram.org/botYOUR_TOKEN/sendMessage" \
+  -d "chat_id=YOUR_CHAT_ID" \
+  -d "text=Hermes Agent 测试通知"</code></pre>
 
-    <h3>微信</h3>
-    
-    <p>微信通知通过 Hermes Gateway 配置，需要在网关配置中启用。</p>
-    
-    <pre><code># 微信网关配置
-WEIXIN_NOTIFY_ENABLED=true
-WEIXIN_NOTIFY_USERS=用户ID列表</code></pre>
+    <div class="tip">
+      <strong>提示</strong>：Bot 需要是群组成员才能向群组发送消息。如果使用频道，需要将 Bot 添加为频道管理员。
+    </div>
 
-    <h3>Discord</h3>
+    <!-- ==================== Discord ==================== -->
+    <h3 id="discord">Discord</h3>
     
-    <p>通过 Discord Webhook 发送通知。</p>
+    <p>通过 Discord Webhook 发送通知，配置简单，无需创建 Bot。</p>
+
+    <h4>步骤一：创建 Webhook</h4>
     
+    <p><strong>桌面端操作：</strong></p>
+    <ol>
+      <li>打开 Discord，进入目标服务器</li>
+      <li>右键点击要发送通知的<strong>频道</strong></li>
+      <li>选择「编辑频道」</li>
+      <li>在左侧菜单选择「整合」</li>
+      <li>点击「Webhooks」</li>
+      <li>点击「新建 Webhook」</li>
+      <li>设置名称和头像（可选）</li>
+      <li>点击「复制 Webhook URL」</li>
+    </ol>
+
+    <p><strong>移动端操作：</strong></p>
+    <ol>
+      <li>点击频道名称进入频道设置</li>
+      <li>向下滚动找到「Webhooks」</li>
+      <li>点击「创建 Webhook」</li>
+      <li>复制 Webhook URL</li>
+    </ol>
+
+    <h4>步骤二：在 Hermes 中配置</h4>
     <table>
       <thead>
         <tr>
           <th>参数</th>
           <th>说明</th>
+          <th>示例</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><code>Webhook URL</code></td>
-          <td>Discord 频道的 Webhook 地址</td>
+          <td>Discord 提供的 Webhook 地址</td>
+          <td><code>https://discord.com/api/webhooks/123456789/abc123...</code></td>
         </tr>
       </tbody>
     </table>
 
-    <p>创建 Webhook：</p>
-    <pre><code>1. 进入目标频道设置
-2. 选择「整合」→「Webhooks」
-3. 点击「新建 Webhook」
-4. 复制 Webhook URL</code></pre>
+    <h4>测试配置</h4>
+    <pre><code># 测试 Webhook
+curl -X POST "YOUR_WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Hermes Agent 测试通知"}'</code></pre>
 
-    <h3>邮件</h3>
+    <h4>高级用法：嵌入消息</h4>
+    <pre><code># 发送带格式的嵌入消息
+curl -X POST "YOUR_WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "embeds": [{
+      "title": "API 错误告警",
+      "description": "OpenAI API 返回 429 错误",
+      "color": 15158332,
+      "fields": [
+        {"name": "严重程度", "value": "紧急", "inline": true},
+        {"name": "时间", "value": "2026-04-19 15:30", "inline": true}
+      ],
+      "footer": {"text": "Hermes Agent"}
+    }]
+  }'</code></pre>
+
+    <div class="warning">
+      <strong>安全提示</strong>：Webhook URL 相当于密码，不要公开分享。如果泄露，请在 Discord 中重新生成。
+    </div>
+
+    <!-- ==================== 微信 ==================== -->
+    <h3 id="wechat">微信</h3>
     
+    <p>微信通知通过 Hermes Gateway 配置，支持企业微信和个人微信（通过 Gateway）。</p>
+
+    <h4>前置条件</h4>
+    <ul>
+      <li>已部署 Hermes Gateway 服务</li>
+      <li>Gateway 服务运行正常</li>
+    </ul>
+
+    <h4>配置 Gateway 通知</h4>
+    <pre><code># 在 Gateway 的 systemd 服务中添加环境变量
+# /etc/systemd/system/hermes-gateway.service
+
+[Service]
+Environment="WEIXIN_NOTIFY_ENABLED=true"
+Environment="WEIXIN_NOTIFY_USERS=your_user_id"</code></pre>
+
+    <h4>环境变量说明</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>变量</th>
+          <th>说明</th>
+          <th>默认值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>WEIXIN_NOTIFY_ENABLED</code></td>
+          <td>是否启用微信通知</td>
+          <td><code>false</code></td>
+        </tr>
+        <tr>
+          <td><code>WEIXIN_NOTIFY_USERS</code></td>
+          <td>接收通知的用户 ID 列表</td>
+          <td>-</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip">
+      <strong>提示</strong>：用户 ID 可通过 Gateway 日志查看，或在与 Gateway 的对话中发送消息后从日志中获取。
+    </div>
+
+    <!-- ==================== 邮件 ==================== -->
+    <h3 id="email">邮件</h3>
+    
+    <p>通过 SMTP 发送邮件通知，适合周期性汇总报告。</p>
+
+    <h4>配置参数</h4>
     <table>
       <thead>
         <tr>
           <th>参数</th>
           <th>说明</th>
+          <th>示例</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><code>收件地址</code></td>
-          <td>接收通知的邮箱地址</td>
+          <td>接收通知的邮箱</td>
+          <td><code>admin@example.com</code></td>
         </tr>
         <tr>
           <td><code>SMTP 服务器</code></td>
-          <td>SMTP 发送服务器地址</td>
+          <td>SMTP 服务器地址</td>
+          <td><code>smtp.gmail.com</code></td>
+        </tr>
+        <tr>
+          <td><code>SMTP 端口</code></td>
+          <td>服务器端口</td>
+          <td><code>587</code>（TLS）或 <code>465</code>（SSL）</td>
+        </tr>
+        <tr>
+          <td><code>发件人账号</code></td>
+          <td>SMTP 登录账号</td>
+          <td><code>your@gmail.com</code></td>
+        </tr>
+        <tr>
+          <td><code>发件人密码</code></td>
+          <td>SMTP 密码或应用专用密码</td>
+          <td>-</td>
         </tr>
       </tbody>
     </table>
 
-    <h3>自定义 Webhook</h3>
+    <h4>常见邮件服务商配置</h4>
+    <table>
+      <thead>
+        <tr>
+          <th>服务商</th>
+          <th>SMTP 服务器</th>
+          <th>端口</th>
+          <th>备注</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Gmail</td>
+          <td><code>smtp.gmail.com</code></td>
+          <td>587 / 465</td>
+          <td>需使用应用专用密码</td>
+        </tr>
+        <tr>
+          <td>QQ 邮箱</td>
+          <td><code>smtp.qq.com</code></td>
+          <td>587 / 465</td>
+          <td>需开启 SMTP 服务</td>
+        </tr>
+        <tr>
+          <td>163 邮箱</td>
+          <td><code>smtp.163.com</code></td>
+          <td>465</td>
+          <td>需使用授权码</td>
+        </tr>
+        <tr>
+          <td>阿里企业邮</td>
+          <td><code>smtp.qiye.aliyun.com</code></td>
+          <td>465</td>
+          <td>-</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warning">
+      <strong>注意</strong>：Gmail 需要先生成应用专用密码：Google 账户 → 安全性 → 两步验证 → 应用专用密码。
+    </div>
+
+    <!-- ==================== Webhook ==================== -->
+    <h3 id="webhook">自定义 Webhook</h3>
     
-    <p>支持向自定义 HTTP 端点发送通知。</p>
-    
+    <p>向自定义 HTTP 端点发送通知，用于对接其他系统。</p>
+
+    <h4>配置参数</h4>
     <table>
       <thead>
         <tr>
           <th>参数</th>
           <th>说明</th>
+          <th>示例</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><code>Webhook URL</code></td>
           <td>接收通知的 HTTP 端点</td>
+          <td><code>https://your-server.com/webhook</code></td>
         </tr>
         <tr>
           <td><code>Secret</code></td>
           <td>可选，用于签名验证</td>
+          <td><code>your-secret-key</code></td>
         </tr>
       </tbody>
     </table>
 
-    <p>Webhook 请求格式：</p>
+    <h4>请求格式</h4>
     <pre><code>POST /webhook
 Content-Type: application/json
-X-Hermes-Signature: sha256=...
+X-Hermes-Signature: sha256=HMAC_SHA256(secret, body)
 
 {
   "event": "error",
@@ -149,9 +340,24 @@ X-Hermes-Signature: sha256=...
   "title": "API 调用失败",
   "message": "OpenAI API 返回 429 错误",
   "timestamp": "2026-04-19T15:30:45Z",
-  "metadata": {}
+  "metadata": {
+    "model": "gpt-4",
+    "error_code": 429
+  }
 }</code></pre>
 
+    <h4>签名验证</h4>
+    <pre><code># Python 示例：验证签名
+import hmac
+import hashlib
+
+def verify_signature(secret: str, payload: bytes, signature: str) -> bool:
+    expected = "sha256=" + hmac.new(
+        secret.encode(), payload, hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)</code></pre>
+
+    <!-- ==================== 通知规则 ==================== -->
     <h2>通知规则</h2>
 
     <p>规则定义了在什么条件下触发什么通知。</p>
@@ -266,12 +472,37 @@ X-Hermes-Signature: sha256=...
 
     <h3>渠道选择建议</h3>
     
-    <ul>
-      <li><strong>紧急告警</strong>：使用 Telegram 或微信，确保即时推送</li>
-      <li><strong>日常通知</strong>：使用 Discord，便于团队协作</li>
-      <li><strong>汇总报告</strong>：使用邮件，适合周期性总结</li>
-      <li><strong>系统集成</strong>：使用 Webhook，对接其他系统</li>
-    </ul>
+    <table>
+      <thead>
+        <tr>
+          <th>场景</th>
+          <th>推荐渠道</th>
+          <th>原因</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>紧急告警</td>
+          <td>Telegram / 微信</td>
+          <td>即时推送，手机必达</td>
+        </tr>
+        <tr>
+          <td>团队协作</td>
+          <td>Discord</td>
+          <td>多人可见，支持讨论</td>
+        </tr>
+        <tr>
+          <td>汇总报告</td>
+          <td>邮件</td>
+          <td>便于存档和检索</td>
+        </tr>
+        <tr>
+          <td>系统集成</td>
+          <td>Webhook</td>
+          <td>灵活对接其他系统</td>
+        </tr>
+      </tbody>
+    </table>
 
     <h3>规则配置建议</h3>
     
@@ -291,31 +522,11 @@ X-Hermes-Signature: sha256=...
       <li>支持配置静默时间段</li>
     </ul>
 
-    <h2>API 接口</h2>
-
-    <h3>获取通知配置</h3>
-    <pre><code>GET /api/notifications
-
-Response:
-{
-  "stats": { ... },
-  "channels": [ ... ],
-  "rules": [ ... ],
-  "eventTypes": [ ... ]
-}</code></pre>
-
-    <h3>发送测试通知</h3>
-    <pre><code>POST /api/notifications/test
-{
-  "channelId": "ch-001",
-  "message": "测试通知"
-}</code></pre>
-
     <h2>故障排查</h2>
 
     <h3>通知未发送</h3>
     <ul>
-      <li>检查渠道是否已启用</li>
+      <li>检查渠道是否已启用（开关状态）</li>
       <li>检查规则是否匹配事件类型</li>
       <li>验证渠道配置（Token、URL 等）是否正确</li>
       <li>查看系统日志中的错误信息</li>
@@ -328,16 +539,30 @@ curl "https://api.telegram.org/botYOUR_TOKEN/getMe"
 # 验证 Chat ID
 curl "https://api.telegram.org/botYOUR_TOKEN/getChat?chat_id=YOUR_CHAT_ID"
 
-# 测试发送
-curl -X POST "https://api.telegram.org/botYOUR_TOKEN/sendMessage" \
-  -d "chat_id=YOUR_CHAT_ID" \
-  -d "text=Test"</code></pre>
+# 常见错误
+# 401 Unauthorized: Token 无效
+# 400 Bad Request: Chat ID 格式错误
+# 403 Forbidden: Bot 未加入群组或被禁言</code></pre>
 
     <h3>Discord 通知失败</h3>
     <pre><code># 测试 Webhook
 curl -X POST "YOUR_WEBHOOK_URL" \
   -H "Content-Type: application/json" \
-  -d '{"content": "Test notification"}'</code></pre>
+  -d '{"content": "Test"}'
+
+# 常见错误
+# 404 Not Found: Webhook URL 无效或已删除
+# 403 Forbidden: 权限不足
+# 400 Bad Request: JSON 格式错误</code></pre>
+
+    <h3>邮件通知失败</h3>
+    <pre><code># 测试 SMTP 连接
+telnet smtp.gmail.com 587
+
+# 常见错误
+# 535 Authentication failed: 密码错误或未使用应用专用密码
+# 530 Must issue STARTTLS: 需要启用 TLS
+# Connection refused: 防火墙拦截或端口错误</code></pre>
 
     <div class="tip">
       <strong>提示</strong>：配置通知渠道后，建议先使用「测试」功能验证配置是否正确，然后再启用相关规则。
@@ -394,6 +619,15 @@ pre code {
   background: none;
 }
 
+ol, ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin: 0.25rem 0;
+}
+
 .badge {
   display: inline-block;
   padding: 0.15rem 0.5rem;
@@ -442,10 +676,22 @@ pre code {
   border-left: 4px solid #3b82f6;
   padding: 1rem;
   border-radius: 0 8px 8px 0;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
 }
 
 .tip strong {
   color: #3b82f6;
+}
+
+.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 4px solid #f59e0b;
+  padding: 1rem;
+  border-radius: 0 8px 8px 0;
+  margin-top: 1.5rem;
+}
+
+.warning strong {
+  color: #f59e0b;
 }
 </style>
