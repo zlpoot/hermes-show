@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>对话历史</h1>
     
     <p>对话历史模块提供对 Hermes Agent 所有对话记录的浏览、搜索和管理功能。</p>
@@ -15,7 +15,7 @@
       <li>按会话类型筛选</li>
     </ul>
     
-    <pre><code class="language-plaintext">搜索语法:
+    <pre><code>搜索语法:
 关键词        - 包含该关键词的会话
 "精确短语"    - 完全匹配短语
 关键词1 OR 关键词2 - 包含任一关键词
@@ -51,7 +51,7 @@
     
     <h2>使用方式</h2>
     
-    <pre><code class="language-plaintext">访问路径: /history
+    <pre><code>访问路径: /history
 
 基本操作:
 1. 在搜索框输入关键词搜索
@@ -68,7 +68,7 @@
     <h2>数据存储</h2>
     
     <p>对话数据存储在 SQLite 数据库中：</p>
-    <pre><code class="language-plaintext">数据库位置: ~/.hermes/hermes.db
+    <pre><code>数据库位置: ~/.hermes/hermes.db
 
 表结构:
 - sessions: 会话元数据
@@ -88,11 +88,13 @@
     <div class="tip">
       <strong>提示</strong>: 使用引号进行精确匹配可以更快定位目标会话，例如 "配置微信网关"。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '对话历史 - Hermes Show 文档'

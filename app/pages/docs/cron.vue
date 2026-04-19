@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>定时任务</h1>
     
     <p>定时任务模块允许你创建和管理自动化任务，支持定时执行和重复执行。</p>
@@ -70,7 +70,7 @@
     
     <h2>使用方式</h2>
     
-    <pre><code class="language-plaintext">访问路径: /cron
+    <pre><code>访问路径: /cron
 
 创建任务:
 1. 点击"新建任务"按钮
@@ -91,7 +91,7 @@
     
     <h2>Cron 表达式说明</h2>
     
-    <pre><code class="language-plaintext">格式: 分 时 日 月 周
+    <pre><code>格式: 分 时 日 月 周
 
 示例:
 * * * * *     每分钟执行
@@ -116,11 +116,13 @@
     <div class="warning">
       <strong>注意</strong>: 定时任务在后台独立运行，无法进行交互式对话。任务指令需要是自包含的，能够独立完成。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '定时任务 - Hermes Show 文档'

@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>快速上手</h1>
     
     <p>本指南帮助你快速上手 Hermes Show 的基本使用。</p>
@@ -88,11 +88,13 @@
     <div class="tip">
       <strong>提示</strong>: 遇到问题？查看系统日志获取详细信息，或访问 GitHub Issues 提交反馈。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '快速上手 - Hermes Show 文档'

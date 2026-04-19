@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>Hermes Show 文档</h1>
     
     <p class="lead">
@@ -109,11 +109,13 @@ pnpm build
     <div class="tip">
       <strong>提示</strong>: 点击左侧导航菜单查看各模块的详细使用说明。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '介绍 - Hermes Show 文档'
@@ -138,11 +140,6 @@ useHead({
 .badge.success {
   background: rgba(34, 197, 94, 0.2);
   color: #22c55e;
-}
-
-.badge.pending {
-  background: rgba(234, 179, 8, 0.2);
-  color: #eab308;
 }
 
 .tip {

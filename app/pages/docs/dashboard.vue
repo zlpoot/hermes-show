@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>仪表盘</h1>
     
     <p>仪表盘是 Hermes Show 的首页，提供系统整体状态的可视化概览。</p>
@@ -38,7 +38,7 @@
     
     <h2>使用方式</h2>
     
-    <pre><code class="language-plaintext">访问路径: / 或 /dashboard
+    <pre><code>访问路径: / 或 /dashboard
 
 操作:
 1. 查看系统状态卡片了解整体情况
@@ -54,11 +54,13 @@
     <div class="tip">
       <strong>提示</strong>: 如果状态显示异常，请检查 Hermes Agent 服务是否正常运行。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '仪表盘 - Hermes Show 文档'

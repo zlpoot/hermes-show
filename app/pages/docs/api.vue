@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>API 参考</h1>
     
     <p>本文档列出 Hermes Show 提供的所有 API 端点。</p>
@@ -286,11 +286,13 @@ Response:
     <div class="tip">
       <strong>提示</strong>: 所有 API 支持 CORS，可从前端直接调用。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: 'API 参考 - Hermes Show 文档'

@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>配置中心</h1>
     
     <p>配置中心提供对 Hermes Agent 所有配置文件的在线管理能力，支持实时编辑和保存。</p>
@@ -67,7 +67,7 @@
     
     <h2>使用方式</h2>
     
-    <pre><code class="language-plaintext">访问路径: /config
+    <pre><code>访问路径: /config
 
 操作步骤:
 1. 从左侧文件树选择目标配置文件
@@ -98,11 +98,13 @@
     <div class="warning">
       <strong>注意</strong>: 修改配置后，某些设置需要重启 Hermes Agent 服务才能生效。建议在生产环境修改前先备份配置文件。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '配置中心 - Hermes Show 文档'

@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>项目架构</h1>
     
     <p>本文档介绍 Hermes Show 的技术架构和代码组织。</p>
@@ -50,7 +50,7 @@
     
     <h2>目录结构</h2>
     
-    <pre><code class="language-plaintext">hermes-show/
+    <pre><code>hermes-show/
 ├── app/                    # 应用主目录
 │   ├── app.vue            # 根组件
 │   ├── components/        # 可复用组件
@@ -124,7 +124,7 @@ export const useConfig = () => {
     
     <h2>数据流</h2>
     
-    <pre><code class="language-plaintext">用户操作 → Vue 组件 → Composable/API 调用
+    <pre><code>用户操作 → Vue 组件 → Composable/API 调用
                               ↓
                          Nuxt Server API
                               ↓
@@ -160,11 +160,13 @@ export default defineEventHandler(async (event) => {
     <div class="tip">
       <strong>提示</strong>: 开发时使用 <code>pnpm dev</code> 启动热重载服务器，修改代码后自动刷新。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '项目架构 - Hermes Show 文档'

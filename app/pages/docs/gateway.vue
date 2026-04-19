@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>网关状态</h1>
     
     <p>网关状态模块展示 Hermes Agent 消息网关的运行状态和连接信息。</p>
@@ -69,7 +69,7 @@
     
     <h2>使用方式</h2>
     
-    <pre><code class="language-plaintext">访问路径: /gateway
+    <pre><code>访问路径: /gateway
 
 查看状态:
 1. 查看网关整体运行状态
@@ -141,11 +141,13 @@ WEIXIN_DM_POLICY=open  # open/pairing
     <div class="tip">
       <strong>提示</strong>: 当网关状态异常时，可以先尝试重启服务，如果问题持续请查看系统日志获取详细错误信息。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '网关状态 - Hermes Show 文档'

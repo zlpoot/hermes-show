@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>安装部署</h1>
     
     <p>本指南介绍如何安装和部署 Hermes Show。</p>
@@ -87,11 +87,13 @@ docker run -d -p 3000:3000 --name hermes-show hermes-show
     <div class="tip">
       <strong>提示</strong>: 生产环境建议使用 HTTPS，可以使用 Let's Encrypt 免费证书。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '安装部署 - Hermes Show 文档'

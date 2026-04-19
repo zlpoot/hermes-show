@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>Skills 管理</h1>
     
     <p>Skills 是 Hermes Agent 的能力扩展模块，本页面提供 Skills 的浏览、搜索和管理功能。</p>
@@ -70,7 +70,7 @@
     
     <h2>使用方式</h2>
     
-    <pre><code class="language-plaintext">访问路径: /skills
+    <pre><code>访问路径: /skills
 
 浏览操作:
 1. 从分类列表选择感兴趣的领域
@@ -85,7 +85,7 @@
     
     <h2>Skill 文件结构</h2>
     
-    <pre><code class="language-plaintext">~/.hermes/skills/
+    <pre><code>~/.hermes/skills/
 ├── development/
 │   └── debug/
 │       ├── SKILL.md        # 主文档
@@ -105,11 +105,13 @@
     <div class="tip">
       <strong>提示</strong>: Skills 在 Agent 启动时自动加载，修改后需要重启 Agent 或使用热重载命令。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: 'Skills 管理 - Hermes Show 文档'

@@ -1,5 +1,5 @@
 <template>
-  <DocsLayout>
+  <div>
     <h1>系统日志</h1>
     
     <p>系统日志模块提供对 Hermes Agent 运行日志的实时查看和历史查询功能。</p>
@@ -63,7 +63,7 @@
     
     <h2>使用方式</h2>
     
-    <pre><code class="language-plaintext">访问路径: /logs
+    <pre><code>访问路径: /logs
 
 基本操作:
 1. 从下拉菜单选择日志文件
@@ -80,7 +80,7 @@
     
     <h2>日志格式</h2>
     
-    <pre><code class="language-plaintext">格式: [时间戳] [级别] [模块] 消息内容
+    <pre><code>格式: [时间戳] [级别] [模块] 消息内容
 
 示例:
 [2026-04-19 15:30:45] [INFO] [gateway] WeChat gateway connected
@@ -91,7 +91,7 @@
     
     <h2>日志存储</h2>
     
-    <pre><code class="language-plaintext">日志目录: ~/.hermes/logs/
+    <pre><code>日志目录: ~/.hermes/logs/
 
 配置选项:
 - 日志级别: DEBUG, INFO, WARNING, ERROR
@@ -112,11 +112,13 @@
     <div class="tip">
       <strong>提示</strong>: 在排查问题时，建议先切换到 WARNING 或 ERROR 级别查看关键信息，再根据需要开启 DEBUG 级别获取详细日志。
     </div>
-  </DocsLayout>
+  </div>
 </template>
 
-<script setup>
-import DocsLayout from '~/layouts/docs.vue'
+<script setup lang="ts">
+definePageMeta({
+  layout: 'docs'
+})
 
 useHead({
   title: '系统日志 - Hermes Show 文档'
