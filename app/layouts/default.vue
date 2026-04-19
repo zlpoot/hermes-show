@@ -73,7 +73,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { LayoutDashboard, SlidersHorizontal, History, TerminalSquare, Bot, Settings, Cpu, User, BookOpen, Clock, Radio, ExternalLink, DollarSign, Activity, Gauge, Server, HardDrive } from 'lucide-vue-next'
+import { LayoutDashboard, SlidersHorizontal, History, TerminalSquare, Bot, Settings, Cpu, User, BookOpen, Clock, Radio, ExternalLink, DollarSign, Activity, Gauge, Server, HardDrive, Bell } from 'lucide-vue-next'
 
 const route = useRoute()
 
@@ -88,6 +88,7 @@ const menuItems = [
   { name: '定时任务', path: '/cron', icon: Clock },
   { name: '备份管理', path: '/backup', icon: HardDrive },
   { name: '网关状态', path: '/gateway', icon: Radio },
+  { name: '通知设置', path: '/notifications', icon: Bell },
   { name: '系统日志', path: '/logs', icon: TerminalSquare },
 ]
 
