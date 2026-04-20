@@ -2,109 +2,155 @@
   <div class="h-[calc(100vh-10rem)] flex gap-6">
     <!-- Session List -->
     <div class="w-80 glass-panel flex flex-col overflow-hidden">
-      <div class="p-4 border-b border-card-border">
-        <div class="flex items-center justify-between">
-          <h3 class="font-semibold flex items-center gap-2">
-            <History size="18" class="text-primary" />
-            会话检索 (FTS5)
-          </h3>
-          <div class="flex items-center gap-2">
-            <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors" v-if="sessions.length > 0">
-              <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="w-3.5 h-3.5 rounded border-card-border text-primary focus:ring-primary cursor-pointer" />
-              全选
-            </label>
-            <button v-if="selectedIds.length > 0" @click="deleteSelected" :disabled="isDeleting" class="text-red-500 hover:bg-red-500/10 p-1.5 rounded flex items-center gap-1 text-xs transition-colors">
-              <Trash2 size="14" />
-              {{ isDeleting ? '删除中...' : `删除 (${selectedIds.length})` }}
+      <ClientOnly>
+        <template #fallback>
+          <div class="p-4 border-b border-card-border">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold flex items-center gap-2">
+                <History size="18" class="text-primary" />
+                会话检索 (FTS5)
+              </h3>
+            </div>
+            <div class="relative mt-4">
+              <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input 
+                type="text" 
+                placeholder="搜索历史对话..." 
+                class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
+            </div>
+          </div>
+          <div class="flex-1 overflow-y-auto p-2 space-y-1">
+            <div class="h-full flex items-center justify-center text-muted-foreground">
+              <Loader2 size="24" class="animate-spin" />
+            </div>
+          </div>
+        </template>
+        
+        <div class="p-4 border-b border-card-border">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold flex items-center gap-2">
+              <History size="18" class="text-primary" />
+              会话检索 (FTS5)
+            </h3>
+            <div class="flex items-center gap-2">
+              <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors" v-if="sessions.length > 0">
+                <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="w-3.5 h-3.5 rounded border-card-border text-primary focus:ring-primary cursor-pointer" />
+                全选
+              </label>
+              <button v-if="selectedIds.length > 0" @click="deleteSelected" :disabled="isDeleting" class="text-red-500 hover:bg-red-500/10 p-1.5 rounded flex items-center gap-1 text-xs transition-colors">
+                <Trash2 size="14" />
+                {{ isDeleting ? '删除中...' : `删除 (${selectedIds.length})` }}
+              </button>
+            </div>
+          </div>
+          <div class="relative mt-4">
+            <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input 
+              type="text" 
+              v-model="searchQuery" 
+              @input="debouncedSearch" 
+              placeholder="搜索历史对话..." 
+              class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
+            <Loader2 v-if="isSearching" size="14" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
+          </div>
+          
+          <!-- Type Filter -->
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button 
+              v-for="p in platforms" 
+              :key="p.id"
+              @click="toggleType(p.id)"
+              class="text-xs px-2 py-1 rounded-full border transition-all"
+              :class="selectedTypes.includes(p.id) 
+                ? 'bg-primary/20 border-primary text-primary' 
+                : 'bg-background border-card-border text-muted-foreground hover:border-primary/50'">
+              {{ p.name }} ({{ p.count }})
             </button>
           </div>
         </div>
-        <div class="relative mt-4">
-          <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input 
-            type="text" 
-            v-model="searchQuery" 
-            @input="debouncedSearch" 
-            placeholder="搜索历史对话..." 
-            class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
-          <Loader2 v-if="isSearching" size="14" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
-        </div>
         
-        <!-- Type Filter -->
-        <div class="mt-3 flex flex-wrap gap-2">
-          <button 
-            v-for="p in platforms" 
-            :key="p.id"
-            @click="toggleType(p.id)"
-            class="text-xs px-2 py-1 rounded-full border transition-all"
-            :class="selectedTypes.includes(p.id) 
-              ? 'bg-primary/20 border-primary text-primary' 
-              : 'bg-background border-card-border text-muted-foreground hover:border-primary/50'">
-            {{ p.name }} ({{ p.count }})
-          </button>
-        </div>
-      </div>
-      
-      <div class="flex-1 overflow-y-auto p-2 space-y-1">
-        <div v-for="session in sessions" :key="session.id"
-          class="w-full flex items-center text-left p-1 rounded-lg transition-colors border border-transparent hover:bg-muted/50 group cursor-pointer"
-          :class="activeSession === session.id ? 'bg-primary/10 border-primary/30' : ''"
-          @click="selectSession(session.id)">
-          
-          <!-- Checkbox for batch selection -->
-          <input type="checkbox" :value="session.id" v-model="selectedIds" 
-            @click.stop
-            class="mx-2 w-4 h-4 cursor-pointer rounded border-card-border text-primary focus:ring-primary" />
-          
-          <div class="flex-1 overflow-hidden p-2">
-            <h4 class="text-sm font-medium line-clamp-1" :class="activeSession === session.id ? 'text-primary' : 'text-foreground'">{{ session.title }}</h4>
-            <div class="flex items-center justify-between mt-2">
-              <span class="text-xs text-muted-foreground">{{ session.date }}</span>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-card-border/50 text-muted-foreground">{{ session.platformDisplay || session.platform }}</span>
+        <div class="flex-1 overflow-y-auto p-2 space-y-1">
+          <div v-for="session in sessions" :key="session.id"
+            class="w-full flex items-center text-left p-1 rounded-lg transition-colors border border-transparent hover:bg-muted/50 group cursor-pointer"
+            :class="activeSession === session.id ? 'bg-primary/10 border-primary/30' : ''"
+            @click="selectSession(session.id)">
+            
+            <!-- Checkbox for batch selection -->
+            <input type="checkbox" :value="session.id" v-model="selectedIds" 
+              @click.stop
+              class="mx-2 w-4 h-4 cursor-pointer rounded border-card-border text-primary focus:ring-primary" />
+            
+            <div class="flex-1 overflow-hidden p-2">
+              <h4 class="text-sm font-medium line-clamp-1" :class="activeSession === session.id ? 'text-primary' : 'text-foreground'">{{ session.title }}</h4>
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-xs text-muted-foreground">{{ session.date }}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-card-border/50 text-muted-foreground">{{ session.platformDisplay || session.platform }}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </ClientOnly>
     </div>
 
     <!-- Conversation Detail -->
     <div class="flex-1 glass-panel flex flex-col overflow-hidden">
-      <div class="p-4 border-b border-card-border flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center border border-card-border">
-            <MessageSquare size="20" class="text-muted-foreground" />
+      <ClientOnly>
+        <template #fallback>
+          <div class="p-4 border-b border-card-border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center border border-card-border">
+                <MessageSquare size="20" class="text-muted-foreground" />
+              </div>
+              <div>
+                <h2 class="font-semibold">选择一个会话</h2>
+                <p class="text-xs text-muted-foreground">---</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <h2 class="font-semibold">{{ currentSession?.title || '选择一个会话' }}</h2>
-            <p class="text-xs text-muted-foreground">{{ currentSession?.id || '---' }}</p>
+          <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div class="h-full flex flex-col items-center justify-center text-muted-foreground">
+              <MessageSquare size="48" class="mb-4 opacity-20" />
+              <p>从左侧选择会话以查看详细信息</p>
+            </div>
           </div>
-        </div>
+        </template>
         
-        <div class="flex items-center gap-2" v-if="currentSession">
-          <span class="text-xs px-2 py-1 bg-background border border-card-border rounded-md text-muted-foreground">Tokens: {{ currentSession.tokens }}</span>
-          <div class="relative">
-            <button @click="showExportMenu = !showExportMenu" class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
-              <Download size="16" />
-            </button>
-            <div v-if="showExportMenu" class="absolute right-0 top-full mt-1 bg-card border border-card-border rounded-lg shadow-lg py-1 min-w-[140px] z-10">
-              <button @click="exportSession('json')" class="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2">
-                <FileJson size="14" /> 导出 JSON
+        <div class="p-4 border-b border-card-border flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center border border-card-border">
+              <MessageSquare size="20" class="text-muted-foreground" />
+            </div>
+            <div>
+              <h2 class="font-semibold">{{ currentSession?.title || '选择一个会话' }}</h2>
+              <p class="text-xs text-muted-foreground">{{ currentSession?.id || '---' }}</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2" v-if="currentSession">
+            <span class="text-xs px-2 py-1 bg-background border border-card-border rounded-md text-muted-foreground">Tokens: {{ currentSession.tokens }}</span>
+            <div class="relative">
+              <button @click="showExportMenu = !showExportMenu" class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
+                <Download size="16" />
               </button>
-              <button @click="exportSession('md')" class="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2">
-                <FileText size="14" /> 导出 Markdown
-              </button>
+              <div v-if="showExportMenu" class="absolute right-0 top-full mt-1 bg-card border border-card-border rounded-lg shadow-lg py-1 min-w-[140px] z-10">
+                <button @click="exportSession('json')" class="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2">
+                  <FileJson size="14" /> 导出 JSON
+                </button>
+                <button @click="exportSession('md')" class="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2">
+                  <FileText size="14" /> 导出 Markdown
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
-        <div v-if="!currentSession" class="h-full flex flex-col items-center justify-center text-muted-foreground">
-          <MessageSquare size="48" class="mb-4 opacity-20" />
-          <p>从左侧选择会话以查看详细信息</p>
-        </div>
         
-        <template v-else>
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+          <div v-if="!currentSession" class="h-full flex flex-col items-center justify-center text-muted-foreground">
+            <MessageSquare size="48" class="mb-4 opacity-20" />
+            <p>从左侧选择会话以查看详细信息</p>
+          </div>
+          
+          <template v-else>
           <!-- Message Filter -->
           <div class="flex items-center gap-3 pb-4 border-b border-card-border">
             <div class="relative flex-1 max-w-md">
@@ -168,6 +214,7 @@
           </div>
         </template>
       </div>
+      </ClientOnly>
     </div>
   </div>
 </template>
@@ -195,7 +242,9 @@ const { data, refresh } = await useFetch('/api/history', {
 })
 
 const sessions = computed(() => data.value?.sessions || [])
-const activeSession = ref((route.query.id as string) || sessions.value[0]?.id || '')
+
+// Active session - initialized from URL query
+const activeSession = ref((route.query.id as string) || '')
 const activeSessionDetail = ref(null)
 
 const selectedIds = ref<string[]>([])
