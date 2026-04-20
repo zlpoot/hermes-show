@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery, readBody, createError } from 'h3'
 import { getHermesPath } from '../../utils/hermes'
 import fs from 'node:fs'
 import path from 'node:path'
+import { execSync } from 'node:child_process'
 
 interface CronJob {
   id: string
@@ -129,8 +130,8 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    // List all jobs
-    const includeDisabled = query.all === 'true'
+    // List all jobs - 默认显示所有任务包括暂停的
+    const includeDisabled = query.all !== 'false' // 默认包含所有
     let filteredJobs = includeDisabled ? jobs : jobs.filter(j => j.enabled !== false)
     
     // Filter by state
@@ -141,6 +142,7 @@ export default defineEventHandler(async (event) => {
     return {
       jobs: filteredJobs,
       total: filteredJobs.length,
+      allTotal: jobs.length,
       isRealHermesConnected: true
     }
   }
@@ -228,6 +230,34 @@ export default defineEventHandler(async (event) => {
         statusCode: 404,
         message: 'Job not found'
       })
+    }
+    
+    // Handle run_now - 立即执行任务
+    if (body.run_now) {
+      try {
+        const job = jobs[index]
+        
+        // 调用 hermes cron run 命令
+        const result = execSync(`hermes cron run ${job.id}`, {
+          encoding: 'utf8',
+          timeout: 30000,
+          cwd: process.env.HOME
+        })
+        
+        return {
+          success: true,
+          job,
+          message: 'Job execution triggered',
+          output: result
+        }
+      } catch (e: any) {
+        console.error('Failed to run job:', e)
+        return {
+          success: false,
+          message: 'Failed to trigger job execution',
+          error: e.message
+        }
+      }
     }
     
     // Update job
