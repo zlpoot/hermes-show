@@ -1,8 +1,9 @@
-import { execSync } from 'child_process'
+import { spawn } from 'child_process'
+import { readFileSync, existsSync } from 'fs'
 import os from 'os'
 
 interface ReconnectRequest {
-  platform?: string // 如果不传则重连全部
+  platform?: string
 }
 
 interface ReconnectResponse {
@@ -14,45 +15,73 @@ interface ReconnectResponse {
 export default defineEventHandler(async (event): Promise<ReconnectResponse> => {
   const body = await readBody<ReconnectRequest>(event)
   const platform = body?.platform
+  const hermesDir = os.homedir() + '/.hermes'
   
   try {
-    // 通过 systemctl 重启 hermes-gateway 服务
-    // 这会触发所有平台重新连接
-    const result = execSync('systemctl --user restart hermes-gateway', {
-      encoding: 'utf-8',
-      timeout: 10000
-    })
+    const statePath = hermesDir + '/gateway_state.json'
+    
+    if (!existsSync(statePath)) {
+      return {
+        success: false,
+        message: '网关状态文件不存在，请确认 Hermes 网关是否正常运行'
+      }
+    }
+    
+    const state = JSON.parse(readFileSync(statePath, 'utf-8'))
+    
+    // 检查网关进程是否运行
+    if (!state.pid || state.gateway_state !== 'running') {
+      return {
+        success: false,
+        message: '网关未运行，请先启动网关'
+      }
+    }
     
     if (platform) {
+      // 单个平台操作
+      if (!state.platforms || !state.platforms[platform]) {
+        return {
+          success: false,
+          message: `未找到平台 ${platform}`,
+          platform
+        }
+      }
+      
+      const platformState = state.platforms[platform]
+      
+      if (platformState.state === 'connected') {
+        return {
+          success: true,
+          message: `${platform} 已连接，无需重连`,
+          platform
+        }
+      }
+      
+      // 当前版本不支持单独重连，提示用户
       return {
-        success: true,
-        message: `正在重连 ${platform}...`,
+        success: false,
+        message: `当前版本不支持单独重连，请点击"重连全部"`,
         platform
       }
     } else {
-      return {
-        success: true,
-        message: '正在重连所有平台...'
-      }
-    }
-  } catch (error: any) {
-    // 如果 systemctl 失败，尝试直接发送信号
-    try {
-      // 查找 hermes-gateway 进程并发送 SIGHUP 信号重载
-      execSync('pkill -HUP -f "hermes.*gateway" || true', {
-        encoding: 'utf-8',
-        timeout: 5000
+      // 重连全部：异步执行 hermes gateway restart
+      // 使用 detached spawn 避免阻塞请求
+      const child = spawn('hermes', ['gateway', 'restart'], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
       })
+      child.unref()
       
       return {
         success: true,
-        message: platform ? `已发送重连信号到 ${platform}` : '已发送重连信号到所有平台'
+        message: '已发送重启命令，网关将在几秒内重启'
       }
-    } catch (innerError: any) {
-      return {
-        success: false,
-        message: `重连失败: ${innerError.message || '未知错误'}`
-      }
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      message: `操作失败: ${error.message || '未知错误'}`
     }
   }
 })
