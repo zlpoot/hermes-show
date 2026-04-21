@@ -230,18 +230,32 @@ const router = useRouter()
 const searchQuery = ref('')
 const isSearching = ref(false)
 
+// Pagination
+const pageSize = ref(20)
+const currentPage = ref(1)
+const totalCount = ref(0)
+
 // Type filter - default: exclude cron
 const selectedTypes = ref<string[]>([])
 const platforms = ref<{ id: string; name: string; count: number }[]>([])
 
-// Fetch sessions with type filter
+// Fetch sessions with type filter and pagination
 const { data, refresh } = await useFetch('/api/history', {
   query: computed(() => ({
-    types: selectedTypes.value.join(',') || undefined
+    types: selectedTypes.value.join(',') || undefined,
+    limit: pageSize.value,
+    offset: (currentPage.value - 1) * pageSize.value
   }))
 })
 
 const sessions = computed(() => data.value?.sessions || [])
+
+// Update total count from API response
+watch(data, (newData) => {
+  if (newData?.total !== undefined) {
+    totalCount.value = newData.total
+  }
+}, { immediate: true })
 
 // Active session - initialized from URL query
 const activeSession = ref((route.query.id as string) || '')
@@ -276,6 +290,8 @@ const toggleType = (typeId: string) => {
   } else {
     selectedTypes.value.push(typeId)
   }
+  // Reset to first page when filter changes
+  currentPage.value = 1
 }
 
 // Filter messages by content and role
@@ -365,10 +381,11 @@ const debouncedSearch = () => {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(async () => {
     isSearching.value = true
+    currentPage.value = 1 // Reset to first page on search
     try {
       const query = searchQuery.value.trim()
       if (query) {
-        const { data: searchData } = await useFetch(`/api/history?q=${encodeURIComponent(query)}&types=${selectedTypes.value.join(',')}`)
+        const { data: searchData } = await useFetch(`/api/history?q=${encodeURIComponent(query)}&types=${selectedTypes.value.join(',')}&limit=${pageSize.value}&offset=0`)
         if (searchData.value) {
           data.value = searchData.value
         }

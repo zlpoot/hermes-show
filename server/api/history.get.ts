@@ -175,6 +175,30 @@ export default defineEventHandler(async (event) => {
           console.log('[history] Failed to get platforms:', e)
         }
         
+        // Get total count for pagination
+        let totalCount = 0
+        try {
+          const countWhere = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
+          if (searchQuery) {
+            const countResult = await prisma.$queryRawUnsafe(
+              `SELECT COUNT(DISTINCT s.id) as total
+               FROM sessions s
+               LEFT JOIN messages m ON s.id = m.session_id
+               ${countWhere}`,
+              ...params
+            )
+            totalCount = Number(countResult[0]?.total || 0)
+          } else {
+            const countResult = await prisma.$queryRawUnsafe(
+              `SELECT COUNT(*) as total FROM sessions ${countWhere}`,
+              ...params
+            )
+            totalCount = Number(countResult[0]?.total || 0)
+          }
+        } catch (e) {
+          console.log('[history] Failed to get total count:', e)
+        }
+        
         return {
           sessions: sessions.map((s: any) => {
             // Generate title for cron sessions
@@ -197,8 +221,10 @@ export default defineEventHandler(async (event) => {
             name: SESSION_TYPES[p.platform] || p.platform || 'Unknown',
             count: Number(p.count)
           })),
-          total: sessions.length,
-          hasMore: sessions.length === limit,
+          total: totalCount,
+          page: Math.floor(offset / limit) + 1,
+          pageSize: limit,
+          hasMore: offset + sessions.length < totalCount,
           isRealHermesConnected: true
         }
       }

@@ -23,6 +23,10 @@ export default defineNuxtConfig({
       ]
     }
   },
+  // 禁用 app manifest 以解决 Nuxt 3.21 + Vite 7 的兼容性问题
+  experimental: {
+    appManifest: false
+  },
   vite: {
     optimizeDeps: {
       include: [
