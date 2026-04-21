@@ -38,3 +38,21 @@ model Message {
 
   @@map("messages")
 }
+
+// 任务队列
+model Task {
+  id             Int      @id @default(autoincrement())
+  title          String
+  description    String?
+  status         String   @default("pending")
+  priority       Int      @default(5)
+  parent_id      Int?
+  notify_channels String? // JSON 数组
+  notify_discord  Boolean  @default(true)
+  created_at     String
+  started_at     String?
+  completed_at   String?
+  result         String?
+
+  @@map("tasks")
+}

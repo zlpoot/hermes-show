@@ -241,12 +241,21 @@
             </div>
             
             <div>
-              <label class="block text-sm font-medium mb-1">Discord 通知</label>
-              <select v-model="taskForm.notify_discord"
-                      class="w-full bg-card border border-card-border rounded-lg px-3 py-2 text-sm">
-                <option :value="true">开启</option>
-                <option :value="false">关闭</option>
-              </select>
+              <label class="block text-sm font-medium mb-1">通知频道</label>
+              <div class="space-y-2 max-h-32 overflow-y-auto">
+                <label v-for="channel in availableChannels" :key="channel.id"
+                       class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" 
+                         :value="channel.id" 
+                         v-model="taskForm.notify_channels"
+                         class="w-4 h-4 rounded border-card-border bg-card" />
+                  <span class="text-sm">{{ channel.name }}</span>
+                  <span class="text-xs text-muted-foreground">({{ channel.type }})</span>
+                </label>
+                <p v-if="availableChannels.length === 0" class="text-xs text-muted-foreground">
+                  暂无可用频道，请先配置通知频道
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -302,8 +311,29 @@ const taskForm = reactive({
   title: '',
   description: '',
   priority: 5,
-  notify_discord: true
+  notify_channels: [] as string[]
 })
+
+// 通知频道列表
+const availableChannels = ref<Array<{ id: string; name: string; type: string }>>([])
+
+// 加载通知频道
+const loadNotificationChannels = async () => {
+  try {
+    const res = await $fetch('/api/notification-channels')
+    if (res.channels) {
+      availableChannels.value = res.channels
+        .filter((c: any) => c.enabled)
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          type: c.type
+        }))
+    }
+  } catch (e) {
+    console.error('Failed to load notification channels')
+  }
+}
 
 let searchTimeout: any = null
 
@@ -365,7 +395,20 @@ const editTask = (task: any) => {
   taskForm.title = task.title
   taskForm.description = task.description || ''
   taskForm.priority = task.priority
-  taskForm.notify_discord = task.notify_discord
+  // 使用新的 notify_channels 字段，向后兼容旧的 notify_discord
+  if (task.notify_channels && task.notify_channels.length > 0) {
+    taskForm.notify_channels = [...task.notify_channels]
+  } else if (task.notify_discord !== false) {
+    // 向后兼容：默认选择任务频道
+    const taskChannel = availableChannels.value.find(c => c.id.includes('task'))
+    if (taskChannel) {
+      taskForm.notify_channels = [taskChannel.id]
+    } else if (availableChannels.value.length > 0) {
+      taskForm.notify_channels = [availableChannels.value[0].id]
+    }
+  } else {
+    taskForm.notify_channels = []
+  }
 }
 
 const deleteTask = async (task: any) => {
@@ -422,7 +465,7 @@ const closeModal = () => {
   taskForm.title = ''
   taskForm.description = ''
   taskForm.priority = 5
-  taskForm.notify_discord = true
+  taskForm.notify_channels = []
 }
 
 const showToast = (type: string, message: string) => {
@@ -479,6 +522,7 @@ const getPriorityClass = (priority: number) => {
 onMounted(() => {
   loadTasks()
   loadStats()
+  loadNotificationChannels()
   // Auto refresh every 30s
   setInterval(loadStats, 30000)
 })
