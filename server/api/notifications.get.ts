@@ -187,13 +187,25 @@ export default defineEventHandler(async (event) => {
     )
   }
   
-  // 事件类型定义
+  // 事件类型定义 - 扩展支持更多通知类型
   const eventTypes = [
     { id: 'error', name: '错误告警', description: 'API 错误、任务失败等严重问题', enabled: true, triggerCount: 0 },
     { id: 'warning', name: '性能警告', description: '高延迟、资源使用过高等警告', enabled: true, triggerCount: 0 },
-    { id: 'task_complete', name: '任务完成', description: '定时任务、后台任务完成通知', enabled: backgroundNotify !== 'none', triggerCount: 0 },
+    { id: 'critical', name: '严重告警', description: '系统崩溃、服务不可用等严重问题', enabled: true, triggerCount: 0 },
+    { id: 'task_complete', name: '任务完成', description: '后台任务、异步任务完成通知', enabled: backgroundNotify !== 'none', triggerCount: 0 },
+    { id: 'task_start', name: '任务开始', description: '后台任务、异步任务开始执行', enabled: backgroundNotify !== 'none', triggerCount: 0 },
+    { id: 'task_failed', name: '任务失败', description: '任务执行失败通知', enabled: true, triggerCount: 0 },
     { id: 'system', name: '系统事件', description: '启动、关闭、配置变更等系统事件', enabled: true, triggerCount: 0 },
-    { id: 'gateway', name: '网关事件', description: '平台连接状态变化、重连等', enabled: true, triggerCount: 0 }
+    { id: 'config_change', name: '配置变更', description: '系统配置修改通知', enabled: true, triggerCount: 0 },
+    { id: 'auth', name: '授权事件', description: '用户授权、权限变更通知', enabled: true, triggerCount: 0 },
+    { id: 'gateway', name: '网关事件', description: '平台连接状态变化、重连等', enabled: true, triggerCount: 0 },
+    { id: 'connection', name: '连接事件', description: 'Discord/Telegram/WeChat 连接状态', enabled: true, triggerCount: 0 },
+    { id: 'cron', name: '定时任务', description: 'Cron 任务执行结果通知', enabled: true, triggerCount: 0 },
+    { id: 'budget', name: '预算告警', description: '预算超支、费用异常警告', enabled: true, triggerCount: 0 },
+    { id: 'backup', name: '备份通知', description: '数据库备份完成/失败通知', enabled: true, triggerCount: 0 },
+    { id: 'info', name: '一般通知', description: '日常消息、低优先级事件', enabled: true, triggerCount: 0 },
+    { id: 'test', name: '测试通知', description: '测试消息、调试通知', enabled: false, triggerCount: 0 },
+    { id: 'daily', name: '日常消息', description: '每日摘要、例行通知', enabled: true, triggerCount: 0 }
   ]
   
   // 最近通知（从日志读取最后几条）

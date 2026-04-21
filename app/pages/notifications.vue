@@ -528,6 +528,7 @@ const getEventIcon = (type: string) => {
   const icons: Record<string, any> = {
     'error': XCircle,
     'warning': AlertTriangle,
+    'critical': AlertTriangle,
     'task_complete': CheckCircle2,
     'task_start': Activity,
     'task_failed': XCircle,
@@ -537,7 +538,8 @@ const getEventIcon = (type: string) => {
     'connection': Link,
     'config_change': Settings2,
     'auth': Bell,
-    'critical': AlertTriangle,
+    'budget': AlertTriangle,
+    'backup': CheckCircle2,
     'info': Bell,
     'test': TestTube,
     'daily': Bell
@@ -549,6 +551,7 @@ const getEventColor = (type: string) => {
   const colors: Record<string, string> = {
     'error': 'text-red-400',
     'warning': 'text-amber-400',
+    'critical': 'text-red-400',
     'task_complete': 'text-emerald-400',
     'task_start': 'text-blue-400',
     'task_failed': 'text-red-400',
@@ -558,7 +561,8 @@ const getEventColor = (type: string) => {
     'connection': 'text-indigo-400',
     'config_change': 'text-orange-400',
     'auth': 'text-pink-400',
-    'critical': 'text-red-400',
+    'budget': 'text-yellow-400',
+    'backup': 'text-teal-400',
     'info': 'text-blue-400',
     'test': 'text-green-400',
     'daily': 'text-gray-400'
@@ -570,6 +574,7 @@ const getEventBgColor = (type: string) => {
   const colors: Record<string, string> = {
     'error': 'bg-red-500/10',
     'warning': 'bg-amber-500/10',
+    'critical': 'bg-red-500/10',
     'task_complete': 'bg-emerald-500/10',
     'task_start': 'bg-blue-500/10',
     'task_failed': 'bg-red-500/10',
@@ -579,7 +584,8 @@ const getEventBgColor = (type: string) => {
     'connection': 'bg-indigo-500/10',
     'config_change': 'bg-orange-500/10',
     'auth': 'bg-pink-500/10',
-    'critical': 'bg-red-500/10',
+    'budget': 'bg-yellow-500/10',
+    'backup': 'bg-teal-500/10',
     'info': 'bg-blue-500/10',
     'test': 'bg-green-500/10',
     'daily': 'bg-gray-500/10'
