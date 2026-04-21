@@ -27,8 +27,7 @@ test.describe('Skills 管理页面', () => {
       errors.push(error.message)
     })
     
-    await page.goto('/skills')
-    await page.waitForLoadState('networkidle')
+    // beforeEach 已经导航到 /skills，无需重复导航
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)

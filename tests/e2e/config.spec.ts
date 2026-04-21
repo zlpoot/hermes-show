@@ -26,8 +26,7 @@ test.describe('配置中心页面', () => {
       errors.push(error.message)
     })
     
-    await page.goto('/config')
-    await page.waitForLoadState('networkidle')
+    // beforeEach 已经导航到 /config，无需重复导航
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)

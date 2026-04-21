@@ -24,8 +24,7 @@ test.describe('提供商监控页面', () => {
       errors.push(error.message)
     })
     
-    await page.goto('/providers')
-    await page.waitForLoadState('networkidle')
+    // beforeEach 已经导航到 /providers，无需重复导航
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)

@@ -24,8 +24,7 @@ test.describe('健康检查页面', () => {
       errors.push(error.message)
     })
     
-    await page.goto('/health')
-    await page.waitForLoadState('networkidle')
+    // beforeEach 已经导航到 /health，无需重复导航
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)

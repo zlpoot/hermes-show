@@ -24,8 +24,7 @@ test.describe('定时任务页面', () => {
       errors.push(error.message)
     })
     
-    await page.goto('/cron')
-    await page.waitForLoadState('networkidle')
+    // beforeEach 已经导航到 /cron，无需重复导航
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)

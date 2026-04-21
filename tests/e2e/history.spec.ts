@@ -34,8 +34,7 @@ test.describe('历史页面', () => {
       }
     })
     
-    await page.goto('/history')
-    await page.waitForLoadState('networkidle')
+    // beforeEach 已经导航到 /history，无需重复导航
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)
@@ -48,8 +47,7 @@ test.describe('历史页面', () => {
       errors.push(error.message)
     })
     
-    await page.goto('/history')
-    await page.waitForLoadState('networkidle')
+    // beforeEach 已经导航到 /history，无需重复导航
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)

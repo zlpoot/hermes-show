@@ -24,8 +24,7 @@ test.describe('成本统计页面', () => {
       errors.push(error.message)
     })
     
-    await page.goto('/cost')
-    await page.waitForLoadState('networkidle')
+    // beforeEach 已经导航到 /cost，无需重复导航
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)
