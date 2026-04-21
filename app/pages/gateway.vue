@@ -301,25 +301,74 @@ const getPlatformIcon = (platform: string) => {
 }
 
 const reconnectAll = async () => {
-  showStatus('success', '正在重连所有平台...')
+  try {
+    const result = await $fetch('/api/gateway/reconnect', {
+      method: 'POST',
+      body: {}
+    })
+    showStatus(result.success ? 'success' : 'error', result.message)
+    if (result.success) {
+      setTimeout(() => refreshData(), 2000)
+    }
+  } catch (error: any) {
+    showStatus('error', error.message || '重连失败')
+  }
 }
 
 const reconnect = async (platform: string) => {
-  showStatus('success', `正在重连 ${platform}...`)
+  try {
+    const result = await $fetch('/api/gateway/reconnect', {
+      method: 'POST',
+      body: { platform }
+    })
+    showStatus(result.success ? 'success' : 'error', result.message)
+    if (result.success) {
+      setTimeout(() => refreshData(), 2000)
+    }
+  } catch (error: any) {
+    showStatus('error', error.message || '重连失败')
+  }
 }
 
 const clearQueue = async () => {
   if (!confirm('确定要清空消息队列吗？')) return
-  showStatus('success', '消息队列已清空')
+  try {
+    const result = await $fetch('/api/gateway/queue/clear', {
+      method: 'POST'
+    })
+    showStatus(result.success ? 'success' : 'error', result.message)
+    if (result.success) {
+      refreshData()
+    }
+  } catch (error: any) {
+    showStatus('error', error.message || '清空队列失败')
+  }
 }
 
 const restartGateway = async () => {
   if (!confirm('确定要重启网关吗？这将暂时中断所有连接。')) return
-  showStatus('success', '网关重启中...')
+  try {
+    const result = await $fetch('/api/gateway/restart', {
+      method: 'POST'
+    })
+    showStatus(result.success ? 'success' : 'error', result.message)
+    if (result.success) {
+      setTimeout(() => refreshData(), 3000)
+    }
+  } catch (error: any) {
+    showStatus('error', error.message || '重启失败')
+  }
 }
 
 const reloadConfig = async () => {
-  showStatus('success', '配置重新加载成功')
+  try {
+    const result = await $fetch('/api/gateway/reload', {
+      method: 'POST'
+    })
+    showStatus(result.success ? 'success' : 'error', result.message)
+  } catch (error: any) {
+    showStatus('error', error.message || '重载配置失败')
+  }
 }
 
 const enableMaintenance = async () => {
