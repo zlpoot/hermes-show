@@ -38,5 +38,14 @@ export default defineNuxtConfig({
         '@prisma/client'
       ]
     }
+  },
+  // 运行时配置 - 支持跨平台环境变量
+  runtimeConfig: {
+    // 服务端私有配置
+    hermesPath: process.env.NUXT_HERMES_PATH || '',
+    gatewayAllowAllUsers: process.env.NUXT_GATEWAY_ALLOW_ALL_USERS || 'false',
+    weixinAllowAllUsers: process.env.NUXT_WEIXIN_ALLOW_ALL_USERS || 'false',
+    weixinDmPolicy: process.env.NUXT_WEIXIN_DM_POLICY || 'pairing',
+    workDir: process.env.NUXT_WORK_DIR || '',
   }
 })

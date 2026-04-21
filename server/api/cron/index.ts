@@ -1,8 +1,9 @@
 import { defineEventHandler, getQuery, readBody, createError } from 'h3'
-import { getHermesPath } from '../../utils/hermes'
+import { getHermesPath, getRuntimeConfig } from '../../utils/hermes'
 import fs from 'node:fs'
 import path from 'node:path'
 import { execSync } from 'node:child_process'
+import os from 'node:os'
 
 interface CronJob {
   id: string
@@ -236,12 +237,16 @@ export default defineEventHandler(async (event) => {
     if (body.run_now) {
       try {
         const job = jobs[index]
+        const runtimeConfig = getRuntimeConfig()
+        
+        // 获取工作目录：优先 runtimeConfig，然后 HOME 环境变量，最后 os.homedir()
+        const workDir = runtimeConfig.workDir || process.env.HOME || os.homedir()
         
         // 调用 hermes cron run 命令
         const result = execSync(`hermes cron run ${job.id}`, {
           encoding: 'utf8',
           timeout: 30000,
-          cwd: process.env.HOME
+          cwd: workDir
         })
         
         return {

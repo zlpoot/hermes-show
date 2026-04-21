@@ -1,16 +1,17 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { getHermesPath, getHermesConfig, getHermesDB } from '../utils/hermes'
+import { getHermesPath, getHermesConfig, getHermesDB, getRuntimeConfig } from '../utils/hermes'
 
 export default defineEventHandler(async (event) => {
   const hermesPath = getHermesPath()
   const config = getHermesConfig()
   const prisma = getHermesDB()
+  const runtimeConfig = getRuntimeConfig()
   
-  // 从环境变量或配置获取授权策略
-  const allowAllUsers = process.env.GATEWAY_ALLOW_ALL_USERS === 'true' || 
-                        process.env.WEIXIN_ALLOW_ALL_USERS === 'true'
-  const pairingMode = process.env.WEIXIN_DM_POLICY || config?.weixin?.dm_policy || 'pairing'
+  // 从运行时配置或 Hermes config.yaml 获取授权策略
+  const allowAllUsers = runtimeConfig.gatewayAllowAllUsers === 'true' || 
+                        runtimeConfig.weixinAllowAllUsers === 'true'
+  const pairingMode = runtimeConfig.weixinDmPolicy || config?.weixin?.dm_policy || 'pairing'
   
   // 读取授权用户列表
   const authorizedUsers: any[] = []
