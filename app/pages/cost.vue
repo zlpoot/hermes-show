@@ -7,7 +7,7 @@
         <span class="text-sm font-medium">已连接 Hermes Agent</span>
       </div>
       <button @click="doRefresh" class="text-xs hover:underline flex items-center gap-1">
-        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" />
         刷新
       </button>
     </div>
@@ -20,7 +20,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">总会话数</span>
-          <MessageSquare size="16" class="text-primary" />
+          <MessageSquare :size="16" class="text-primary" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ formatNumber(data?.summary?.totalSessions || 0) }}</h3>
       </div>
@@ -28,7 +28,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">总 Tokens</span>
-          <Coins size="16" class="text-blue-400" />
+          <Coins :size="16" class="text-blue-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ formatTokens(data?.summary?.totalTokens || 0) }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -40,7 +40,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">总费用</span>
-          <DollarSign size="16" class="text-green-400" />
+          <DollarSign :size="16" class="text-green-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono text-green-400">${{ (data?.summary?.totalCost || 0).toFixed(2) }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -51,7 +51,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">平均每会话</span>
-          <TrendingUp size="16" class="text-amber-400" />
+          <TrendingUp :size="16" class="text-amber-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">${{ (data?.summary?.avgCostPerSession || 0).toFixed(4) }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -80,7 +80,7 @@
         <div class="h-72 w-full flex items-center justify-center border border-card-border rounded-xl bg-card/30 p-4">
           <Line v-if="chartData && chartData.labels && chartData.labels.length > 0" :data="chartData" :options="chartOptions" />
           <div v-else class="flex flex-col items-center text-muted-foreground">
-            <BarChart2 size="48" class="mb-4 opacity-50" />
+            <BarChart2 :size="48" class="mb-4 opacity-50" />
             <p>暂无数据</p>
           </div>
         </div>
@@ -106,7 +106,7 @@
           </div>
           
           <div v-if="!data?.byModel?.length" class="text-center text-muted-foreground py-8">
-            <PieChart size="32" class="mx-auto mb-2 opacity-50" />
+            <PieChart :size="32" class="mx-auto mb-2 opacity-50" />
             <p class="text-sm">暂无数据</p>
           </div>
         </div>
@@ -118,7 +118,7 @@
       <!-- Model Details -->
       <div class="glass-panel p-6">
         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Cpu size="18" class="text-primary" />
+          <Cpu :size="18" class="text-primary" />
           模型明细
         </h3>
         <div class="overflow-x-auto">
@@ -148,7 +148,7 @@
       <!-- Platform Details -->
       <div class="glass-panel p-6">
         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Monitor size="18" class="text-primary" />
+          <Monitor :size="18" class="text-primary" />
           平台明细
         </h3>
         <div class="overflow-x-auto">
@@ -184,7 +184,7 @@
     <!-- Pricing Reference -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Info size="18" class="text-primary" />
+        <Info :size="18" class="text-primary" />
         模型定价参考 (USD/1M Tokens)
       </h3>
       <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
@@ -273,7 +273,7 @@ const chartOptions = {
       },
       ticks: {
         color: 'rgba(255, 255, 255, 0.5)',
-        callback: (value: number) => formatTokens(value)
+        callback: (value: string | number) => formatTokens(value as number)
       }
     }
   }

@@ -110,7 +110,7 @@ async function sendDiscordNotification(
   request: NotifyRequest
 ): Promise<{ success: boolean; error?: string }> {
   if (!channel.webhookUrl && !channel.channelId) {
-    return { success: false, error: 'No webhook URL or channel ID configured' }
+    return { success: false, error: '未配置 Webhook URL 或频道 ID' }
   }
   
   try {
@@ -128,7 +128,7 @@ async function sendDiscordNotification(
       color: colorMap[request.severity] || 0x3498db,
       timestamp: new Date().toISOString(),
       footer: {
-        text: `Hermes Agent • ${request.event}`
+        text: `小川 • ${request.event}`
       }
     }
     
@@ -157,16 +157,16 @@ async function sendDiscordNotification(
       
       if (!response.ok) {
         const text = await response.text()
-        return { success: false, error: `Discord API error: ${response.status} ${text}` }
+        return { success: false, error: `Discord API 错误: ${response.status} ${text}` }
       }
       
       return { success: true }
     }
     
     // 如果只有channelId，暂时返回错误（需要bot token支持）
-    return { success: false, error: 'Webhook URL required for Discord notifications' }
+    return { success: false, error: 'Discord 通知需要 Webhook URL' }
   } catch (e: any) {
-    return { success: false, error: e.message || 'Unknown error' }
+    return { success: false, error: e.message || '未知错误' }
   }
 }
 
@@ -178,7 +178,7 @@ async function sendTelegramNotification(
   request: NotifyRequest
 ): Promise<{ success: boolean; error?: string }> {
   // TODO: 实现Telegram通知
-  return { success: false, error: 'Telegram notifications not yet implemented' }
+  return { success: false, error: 'Telegram 通知尚未实现' }
 }
 
 /**
@@ -189,7 +189,7 @@ async function sendWeixinNotification(
   request: NotifyRequest
 ): Promise<{ success: boolean; error?: string }> {
   // TODO: 实现微信通知
-  return { success: false, error: 'WeChat notifications not yet implemented' }
+  return { success: false, error: '微信通知尚未实现' }
 }
 
 /**
@@ -203,11 +203,11 @@ async function sendNotificationToChannel(
   const channel = config.channels[channelId]
   
   if (!channel) {
-    return { success: false, channel: channelId, error: 'Channel not found' }
+    return { success: false, channel: channelId, error: '频道不存在' }
   }
   
   if (!channel.enabled) {
-    return { success: false, channel: channelId, error: 'Channel is disabled' }
+    return { success: false, channel: channelId, error: '频道已禁用' }
   }
   
   // 根据频道类型发送
@@ -219,7 +219,7 @@ async function sendNotificationToChannel(
     case 'weixin':
       return { ...await sendWeixinNotification(channel, request), channel: channelId }
     default:
-      return { success: false, channel: channelId, error: 'Unknown channel type' }
+      return { success: false, channel: channelId, error: '未知频道类型' }
   }
 }
 
@@ -314,55 +314,92 @@ export async function notify(request: NotifyRequest): Promise<NotifyResult> {
   }
 }
 
+export interface TaskCompleteOptions {
+  taskId: number
+  title: string
+  result?: string
+  channels?: string[]
+  metadata?: Record<string, any>
+}
+
+export interface TaskFailedOptions {
+  taskId: number
+  title: string
+  error: string
+  channels?: string[]
+  metadata?: Record<string, any>
+}
+
+export interface GatewayStatusOptions {
+  platform: string
+  status: 'connected' | 'disconnected' | 'error'
+  message?: string
+  channels?: string[]
+  metadata?: Record<string, any>
+}
+
+export interface SystemEventOptions {
+  eventType: string
+  title: string
+  message: string
+  channels?: string[]
+  metadata?: Record<string, any>
+}
+
 /**
  * 快捷方法：任务完成通知
  */
-export async function notifyTaskComplete(taskId: number, title: string, result?: string, metadata?: Record<string, any>): Promise<NotifyResult> {
+export async function notifyTaskComplete(options: TaskCompleteOptions): Promise<NotifyResult> {
   return notify({
     event: 'task_complete',
     severity: 'info',
-    title: `任务完成 #${taskId}`,
-    message: `**${title}**\n${result || '任务已成功完成'}`,
-    metadata: { taskId, ...metadata }
+    title: `任务完成 #${options.taskId}`,
+    message: `**${options.title}**\n${options.result || '任务已成功完成'}`,
+    metadata: { taskId: options.taskId, ...options.metadata },
+    channels: options.channels
   })
 }
 
 /**
  * 快捷方法：任务失败通知
  */
-export async function notifyTaskFailed(taskId: number, title: string, error: string, metadata?: Record<string, any>): Promise<NotifyResult> {
+export async function notifyTaskFailed(options: TaskFailedOptions): Promise<NotifyResult> {
   return notify({
     event: 'task_failed',
     severity: 'error',
-    title: `任务失败 #${taskId}`,
-    message: `**${title}**\n错误: ${error}`,
-    metadata: { taskId, error, ...metadata }
+    title: `任务失败 #${options.taskId}`,
+    message: `**${options.title}**\n错误: ${options.error}`,
+    metadata: { taskId: options.taskId, error: options.error, ...options.metadata },
+    channels: options.channels
   })
 }
 
 /**
  * 快捷方法：网关状态通知
  */
-export async function notifyGatewayStatus(platform: string, status: 'connected' | 'disconnected' | 'error', message?: string, metadata?: Record<string, any>): Promise<NotifyResult> {
-  const severity = status === 'connected' ? 'info' : status === 'error' ? 'error' : 'warning'
+export async function notifyGatewayStatus(options: GatewayStatusOptions): Promise<NotifyResult> {
+  const severity = options.status === 'connected' ? 'info' : options.status === 'error' ? 'error' : 'warning'
+  const statusText = options.status === 'connected' ? '已连接' : options.status === 'error' ? '错误' : '已断开'
   return notify({
     event: 'gateway',
     severity,
-    title: `Gateway ${status === 'connected' ? '已连接' : status === 'error' ? '错误' : '已断开'}`,
-    message: `平台: **${platform}**\n${message || ''}`,
-    metadata: { platform, status, ...metadata }
+    title: `网关${statusText}`,
+    message: `平台: **${options.platform}**\n${options.message || ''}`,
+    metadata: { platform: options.platform, status: options.status, ...options.metadata },
+    channels: options.channels
   })
 }
 
 /**
  * 快捷方法：系统事件通知
  */
-export async function notifySystemEvent(eventType: string, title: string, message: string, metadata?: Record<string, any>): Promise<NotifyResult> {
+export async function notifySystemEvent(options: SystemEventOptions): Promise<NotifyResult> {
   return notify({
-    event: eventType,
+    event: options.eventType,
     severity: 'info',
-    title,
-    message,
-    metadata
+    title: options.title,
+    message: options.message,
+    metadata: options.metadata,
+    channels: options.channels
   })
 }

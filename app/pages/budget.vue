@@ -7,7 +7,7 @@
         <span class="text-sm font-medium">已连接 Hermes Agent</span>
       </div>
       <button @click="doRefresh" class="text-xs hover:underline flex items-center gap-1">
-        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" />
         刷新
       </button>
     </div>
@@ -19,12 +19,12 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-6">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Wallet size="18" class="text-primary" />
+          <Wallet :size="18" class="text-primary" />
           本月预算概览
         </h3>
         <div class="flex items-center gap-2">
           <button @click="editBudget" class="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-lg border border-primary/30 hover:bg-primary/20 transition-colors flex items-center gap-1">
-            <Pencil size="14" />
+            <Pencil :size="14" />
             设置预算
           </button>
         </div>
@@ -59,7 +59,7 @@
         <div class="bg-card/50 rounded-xl p-4 border border-card-border">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs text-muted-foreground">今日消费</span>
-            <TrendingUp size="14" class="text-green-400" />
+            <TrendingUp :size="14" class="text-green-400" />
           </div>
           <p class="text-xl font-bold font-mono">{{ formatCurrency(data?.today?.cost || 0) }}</p>
           <p class="text-xs text-muted-foreground mt-1">
@@ -70,7 +70,7 @@
         <div class="bg-card/50 rounded-xl p-4 border border-card-border">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs text-muted-foreground">本周消费</span>
-            <Calendar size="14" class="text-blue-400" />
+            <Calendar :size="14" class="text-blue-400" />
           </div>
           <p class="text-xl font-bold font-mono">{{ formatCurrency(data?.week?.cost || 0) }}</p>
           <p class="text-xs text-muted-foreground mt-1">
@@ -81,18 +81,18 @@
         <div class="bg-card/50 rounded-xl p-4 border border-card-border">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs text-muted-foreground">本月消费</span>
-            <BarChart2 size="14" class="text-amber-400" />
+            <BarChart2 :size="14" class="text-amber-400" />
           </div>
           <p class="text-xl font-bold font-mono">{{ formatCurrency(data?.month?.cost || 0) }}</p>
           <p class="text-xs text-muted-foreground mt-1">
-            较上月 {{ data?.month?.change > 0 ? '+' : '' }}{{ data?.month?.change || 0 }}%
+            较上月 {{ (data?.month?.change ?? 0) > 0 ? '+' : '' }}{{ data?.month?.change ?? 0 }}%
           </p>
         </div>
         
         <div class="bg-card/50 rounded-xl p-4 border border-card-border">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs text-muted-foreground">预估月消费</span>
-            <Calculator size="14" class="text-purple-400" />
+            <Calculator :size="14" class="text-purple-400" />
           </div>
           <p class="text-xl font-bold font-mono" :class="estimatedExceeds ? 'text-red-400' : ''">
             {{ formatCurrency(data?.estimated?.cost || 0) }}
@@ -108,7 +108,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <AlertTriangle size="18" class="text-amber-400" />
+          <AlertTriangle :size="18" class="text-amber-400" />
           预算预警
         </h3>
         <label class="flex items-center cursor-pointer gap-2">
@@ -163,19 +163,19 @@
     <!-- Cost by Provider -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <PieChart size="18" class="text-primary" />
+        <PieChart :size="18" class="text-primary" />
         按提供商分布
       </h3>
       
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Provider List -->
         <div class="space-y-3">
-          <div v-for="provider in data?.providerCosts" :key="provider.name" 
+          <div v-for="provider in (data?.providerCosts ?? [])" :key="provider.name" 
                class="p-4 bg-muted/30 rounded-xl border border-card-border">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-card flex items-center justify-center border border-card-border">
-                  <component :is="getProviderIcon(provider.name)" size="18" :class="provider.color" />
+                  <component :is="getProviderIcon(provider.name)" :size="18" :class="provider.color" />
                 </div>
                 <div>
                   <p class="font-medium text-sm">{{ provider.displayName }}</p>
@@ -198,7 +198,7 @@
         <div class="bg-card/30 rounded-xl p-4 border border-card-border">
           <h4 class="text-sm font-medium mb-4">消费趋势 (近7天)</h4>
           <div class="h-48 flex items-end gap-2">
-            <div v-for="(day, index) in data?.dailyTrend" :key="index" class="flex-1 flex flex-col items-center gap-1">
+            <div v-for="(day, index) in (data?.dailyTrend ?? [])" :key="index" class="flex-1 flex flex-col items-center gap-1">
               <div class="w-full bg-primary/20 rounded-t transition-all hover:bg-primary/40"
                    :style="{ height: (day.cost / maxDailyCost * 140) + 'px' }">
               </div>
@@ -213,7 +213,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Users size="18" class="text-primary" />
+          <Users :size="18" class="text-primary" />
           按用户分布
         </h3>
         <span class="text-xs text-muted-foreground">Top 10 消费用户</span>
@@ -233,24 +233,24 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(user, index) in data?.topUsers" :key="user.id" class="border-b border-card-border/50 hover:bg-muted/30">
+            <tr v-for="(user, index) in (data?.topUsers ?? [])" :key="(user as any).id" class="border-b border-card-border/50 hover:bg-muted/30">
               <td class="py-3 px-4">
                 <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
                       :class="index < 3 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'">
                   {{ index + 1 }}
                 </span>
               </td>
-              <td class="py-3 px-4 font-medium">{{ user.displayName }}</td>
-              <td class="py-3 px-4 text-muted-foreground">{{ user.platform }}</td>
-              <td class="py-3 px-4 font-mono">{{ formatNumber(user.sessions) }}</td>
-              <td class="py-3 px-4 font-mono">{{ formatNumber(user.tokens) }}</td>
-              <td class="py-3 px-4 font-mono font-semibold">{{ formatCurrency(user.cost) }}</td>
+              <td class="py-3 px-4 font-medium">{{ (user as any).displayName }}</td>
+              <td class="py-3 px-4 text-muted-foreground">{{ (user as any).platform }}</td>
+              <td class="py-3 px-4 font-mono">{{ formatNumber((user as any).sessions) }}</td>
+              <td class="py-3 px-4 font-mono">{{ formatNumber((user as any).tokens) }}</td>
+              <td class="py-3 px-4 font-mono font-semibold">{{ formatCurrency((user as any).cost) }}</td>
               <td class="py-3 px-4">
                 <div class="flex items-center gap-2">
                   <div class="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                    <div class="h-full bg-primary rounded-full" :style="{ width: user.percent + '%' }"></div>
+                    <div class="h-full bg-primary rounded-full" :style="{ width: (user as any).percent + '%' }"></div>
                   </div>
-                  <span class="text-xs text-muted-foreground">{{ user.percent.toFixed(1) }}%</span>
+                  <span class="text-xs text-muted-foreground">{{ (user as any).percent.toFixed(1) }}%</span>
                 </div>
               </td>
             </tr>
@@ -262,7 +262,7 @@
     <!-- Spending Limits -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <ShieldCheck size="18" class="text-primary" />
+        <ShieldCheck :size="18" class="text-primary" />
         消费限制
       </h3>
       
@@ -377,8 +377,8 @@
          class="fixed bottom-4 right-4 px-4 py-3 rounded-xl border shadow-lg z-50"
          :class="statusMessage.type === 'success' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'">
       <div class="flex items-center gap-2">
-        <CheckCircle v-if="statusMessage.type === 'success'" size="16" />
-        <AlertCircle v-else size="16" />
+        <CheckCircle v-if="statusMessage.type === 'success'" :size="16" />
+        <AlertCircle v-else :size="16" />
         <span class="text-sm">{{ statusMessage.message }}</span>
       </div>
     </div>

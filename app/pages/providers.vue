@@ -7,7 +7,7 @@
         <span class="text-sm font-medium">已连接 Hermes Agent</span>
       </div>
       <button @click="doRefresh" class="text-xs hover:underline flex items-center gap-1">
-        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" />
         刷新
       </button>
     </div>
@@ -20,7 +20,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">平均响应时间</span>
-          <Clock size="16" class="text-blue-400" />
+          <Clock :size="16" class="text-blue-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ (data?.summary?.avgResponseTime || 0).toFixed(0) }}ms</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -31,7 +31,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">成功率</span>
-          <CheckCircle size="16" class="text-green-400" />
+          <CheckCircle :size="16" class="text-green-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono text-green-400">{{ (data?.summary?.successRate || 0).toFixed(1) }}%</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -42,7 +42,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">总调用次数</span>
-          <Activity size="16" class="text-primary" />
+          <Activity :size="16" class="text-primary" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ formatNumber(data?.summary?.totalCalls || 0) }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -53,7 +53,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">活跃提供商</span>
-          <Server size="16" class="text-amber-400" />
+          <Server :size="16" class="text-amber-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.summary?.activeProviders || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -65,7 +65,7 @@
     <!-- Provider Performance Table -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Server size="18" class="text-primary" />
+        <Server :size="18" class="text-primary" />
         提供商性能
       </h3>
       <div class="overflow-x-auto">
@@ -119,7 +119,7 @@
         <div class="h-64">
           <Bar v-if="responseTimeData" :data="responseTimeData" :options="responseTimeOptions" />
           <div v-else class="h-full flex items-center justify-center text-muted-foreground">
-            <BarChart2 size="48" class="opacity-50" />
+            <BarChart2 :size="48" class="opacity-50" />
           </div>
         </div>
       </div>
@@ -129,7 +129,7 @@
         <div class="h-64">
           <Line v-if="successRateData" :data="successRateData" :options="successRateOptions" />
           <div v-else class="h-full flex items-center justify-center text-muted-foreground">
-            <TrendingUp size="48" class="opacity-50" />
+            <TrendingUp :size="48" class="opacity-50" />
           </div>
         </div>
       </div>
@@ -139,30 +139,30 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <AlertTriangle size="18" class="text-red-400" />
+          <AlertTriangle :size="18" class="text-red-400" />
           最近错误
         </h3>
         <span class="text-xs text-muted-foreground">{{ data?.errors?.length || 0 }} 条</span>
       </div>
       <div class="space-y-3 max-h-80 overflow-y-auto">
-        <div v-for="error in data?.errors" :key="error.id" 
+        <div v-for="error in data?.errors" :key="(error as any).id" 
              class="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
-              <span class="text-xs px-2 py-0.5 bg-red-500/20 text-red-400 rounded">{{ error.provider }}</span>
-              <span class="text-xs text-muted-foreground font-mono">{{ error.model }}</span>
+              <span class="text-xs px-2 py-0.5 bg-red-500/20 text-red-400 rounded">{{ (error as any).provider }}</span>
+              <span class="text-xs text-muted-foreground font-mono">{{ (error as any).model }}</span>
             </div>
-            <span class="text-xs text-muted-foreground">{{ error.time }}</span>
+            <span class="text-xs text-muted-foreground">{{ (error as any).time }}</span>
           </div>
-          <p class="text-sm text-red-300">{{ error.message }}</p>
+          <p class="text-sm text-red-300">{{ (error as any).message }}</p>
           <div class="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-            <span>会话: {{ error.sessionId }}</span>
-            <span>响应时间: {{ error.responseTime }}ms</span>
+            <span>会话: {{ (error as any).sessionId }}</span>
+            <span>响应时间: {{ (error as any).responseTime }}ms</span>
           </div>
         </div>
         
         <div v-if="!data?.errors?.length" class="text-center py-8 text-muted-foreground">
-          <CheckCircle size="32" class="mx-auto mb-2 text-green-400" />
+          <CheckCircle :size="32" class="mx-auto mb-2 text-green-400" />
           <p class="text-sm">暂无错误记录</p>
         </div>
       </div>
@@ -174,7 +174,7 @@
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold">{{ selectedProvider.provider }} - {{ selectedProvider.model }}</h3>
           <button @click="selectedProvider = null" class="text-muted-foreground hover:text-foreground">
-            <X size="20" />
+            <X :size="20" />
           </button>
         </div>
         
@@ -357,7 +357,7 @@ const successRateOptions = {
       grid: { color: 'rgba(255, 255, 255, 0.05)' },
       ticks: { 
         color: 'rgba(255, 255, 255, 0.5)',
-        callback: (value: number) => value + '%'
+        callback: (value: string | number) => value + '%'
       }
     }
   }

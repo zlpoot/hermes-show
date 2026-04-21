@@ -78,7 +78,7 @@ export default defineEventHandler(async (event) => {
     
     // 工具列表（从配置中提取）
     tools: servers.flatMap(s => 
-      s.tools.map(t => ({
+      s.tools.map((t: string) => ({
         name: t,
         server: s.name,
         description: `${s.name} 提供的工具`,

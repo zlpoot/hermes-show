@@ -215,7 +215,7 @@ export default defineEventHandler(async (event) => {
             channel: channels[0]?.type || 'system',
             channelName: channels[0]?.name || 'System',
             status: 'sent',
-            time: timeMatch ? timeMatch[1].slice(0, 5) : '--:--'
+            time: timeMatch?.[1]?.slice(0, 5) ?? '--:--'
           })
         }
       }

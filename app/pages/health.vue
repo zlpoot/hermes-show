@@ -5,7 +5,7 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="overallStatusBg">
-            <component :is="overallStatusIcon" size="24" :class="overallStatusText" />
+            <component :is="overallStatusIcon" :size="24" :class="overallStatusText" />
           </div>
           <div>
             <h2 class="text-xl font-semibold">系统状态: {{ overallStatusLabel }}</h2>
@@ -13,7 +13,7 @@
           </div>
         </div>
         <button @click="doRefresh" class="px-4 py-2 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-colors flex items-center gap-2">
-          <RefreshCw size="16" :class="{ 'animate-spin': isRefreshing }" />
+          <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
           刷新
         </button>
       </div>
@@ -26,7 +26,7 @@
            :class="getCheckBorderClass(check.status)">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground capitalize">{{ key }}</span>
-          <component :is="getCheckIcon(check.status)" size="16" :class="getCheckIconClass(check.status)" />
+          <component :is="getCheckIcon(check.status)" :size="16" :class="getCheckIconClass(check.status)" />
         </div>
         <p class="text-sm font-medium">{{ check.message }}</p>
       </div>
@@ -37,7 +37,7 @@
       <!-- System Info -->
       <div class="glass-panel p-6">
         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Server size="18" class="text-primary" />
+          <Server :size="18" class="text-primary" />
           系统信息
         </h3>
         <div class="space-y-3">
@@ -67,7 +67,7 @@
       <!-- Memory & Disk -->
       <div class="glass-panel p-6">
         <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-          <HardDrive size="18" class="text-primary" />
+          <HardDrive :size="18" class="text-primary" />
           存储与内存
         </h3>
         
@@ -111,7 +111,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Folder size="18" class="text-primary" />
+          <Folder :size="18" class="text-primary" />
           Hermes 目录
         </h3>
         <div class="flex items-center gap-4">
@@ -153,7 +153,7 @@
         <div v-for="item in data?.hermesInfo?.breakdown" :key="item.path" 
              class="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
           <div class="flex items-center gap-3">
-            <FolderOpen size="16" class="text-muted-foreground" />
+            <FolderOpen :size="16" class="text-muted-foreground" />
             <span class="text-sm">{{ item.name }}</span>
             <span class="text-xs text-muted-foreground font-mono">{{ item.path }}</span>
           </div>
@@ -165,7 +165,7 @@
     <!-- Gateway Status -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Radio size="18" class="text-primary" />
+        <Radio :size="18" class="text-primary" />
         Gateway 状态
       </h3>
       <div class="flex items-center justify-between p-4 rounded-xl" 
@@ -184,11 +184,11 @@
           </div>
         </div>
         <div v-if="data?.gatewayStatus?.running" class="flex items-center gap-2 text-primary">
-          <CheckCircle size="20" />
+          <CheckCircle :size="20" />
           <span class="text-sm font-medium">正常</span>
         </div>
         <div v-else class="flex items-center gap-2 text-muted-foreground">
-          <XCircle size="20" />
+          <XCircle :size="20" />
           <span class="text-sm">离线</span>
         </div>
       </div>

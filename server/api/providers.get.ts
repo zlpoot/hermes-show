@@ -96,7 +96,7 @@ export default defineEventHandler(async (event) => {
       const totalCalls = providers.reduce((sum, p) => sum + p.calls, 0)
       const successfulCalls = providers.reduce((sum, p) => sum + p.successes, 0)
       const failedCalls = providers.reduce((sum, p) => sum + p.failures, 0)
-      const allResponseTimes = providers.flatMap(p => p.responseTimes ? [p.avgResponseTime] : []).filter(t => t > 0)
+      const allResponseTimes = providers.flatMap(p => p.avgResponseTime > 0 ? [p.avgResponseTime] : [])
       
       // Get all response times for accurate stats
       const allRawResponseTimes: number[] = [] // Would need message-level data
@@ -139,7 +139,8 @@ export default defineEventHandler(async (event) => {
         } else if (p.provider === 'custom') {
           estimatedBucket = 3 // Custom providers often 1-2s
         }
-        responseTimeBuckets[estimatedBucket].count += p.calls
+        const bucket = responseTimeBuckets[estimatedBucket]
+        if (bucket) bucket.count += p.calls
       }
       
       // Success rate trend by hour

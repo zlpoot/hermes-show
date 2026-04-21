@@ -2,7 +2,51 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { execSync } from 'child_process'
 import os from 'os'
 
-export default defineEventHandler(async (event) => {
+// 类型定义
+interface MessageQueueItem {
+  platform: string
+  preview: string
+  sender: string
+  priority: 'high' | 'normal'
+  timestamp: string
+}
+
+interface GatewayResponse {
+  status: string
+  uptime: string
+  reconnectCount: number
+  queueCapacity: number
+  connections: Array<{
+    platform: string
+    displayName: string
+    accountId: string
+    connected: boolean
+    latency: number
+    messageCount: number
+  }>
+  messageQueue: MessageQueueItem[]
+  reconnectHistory: Array<{
+    timestamp: string
+    platform: string
+    reason: string
+    duration: string
+    success: boolean
+  }>
+  pairedUsers: Array<{
+    id: string
+    platform: string
+    approved_at: string
+  }>
+  pid: number | null
+  isRealHermesConnected: boolean
+  system?: {
+    process_running: boolean
+    data_dir_size: string
+    logs_size: string
+  }
+}
+
+export default defineEventHandler(async (event): Promise<GatewayResponse> => {
   const hermesDir = os.homedir() + '/.hermes'
   
   // 检查是否有真实的 Hermes 数据
@@ -58,7 +102,7 @@ export default defineEventHandler(async (event) => {
       reconnectCount: reconnectHistory.length,
       queueCapacity: 100,
       connections: connections,
-      messageQueue: [], // 暂无队列数据
+      messageQueue: [] as MessageQueueItem[], // 暂无队列数据
       reconnectHistory: reconnectHistory.slice(0, 10), // 最近10条
       pairedUsers: pairedUsers,
       pid: gatewayState.pid,
@@ -83,17 +127,17 @@ function getAccountId(platform: string, hermesDir: string): string {
       if (platform === 'weixin') {
         const content = execSync(`grep "\\[Weixin\\] Connected" "${logPath}" | tail -1`, { encoding: 'utf-8' })
         const match = content.match(/account=([^\s]+)/)
-        if (match) return match[1]
+        if (match && match[1]) return match[1]
       }
       if (platform === 'discord') {
         const content = execSync(`grep "\\[Discord\\] Connected as" "${logPath}" | tail -1`, { encoding: 'utf-8' })
         const match = content.match(/Connected as (.+)$/m)
-        if (match) return match[1].trim()
+        if (match && match[1]) return match[1].trim()
       }
       if (platform === 'telegram') {
         const content = execSync(`grep "\\[Telegram\\] Connected" "${logPath}" | tail -1`, { encoding: 'utf-8' })
         const match = content.match(/Connected as [@]?(.+)$/m)
-        if (match) return '@' + match[1].trim().replace('@', '')
+        if (match && match[1]) return '@' + match[1].trim().replace('@', '')
       }
     }
   } catch {}
@@ -176,6 +220,7 @@ function parseReconnectHistory(hermesDir: string): Array<any> {
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
+      if (!line) continue
       const timeMatch = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)
       if (!timeMatch) continue
       
@@ -184,7 +229,7 @@ function parseReconnectHistory(hermesDir: string): Array<any> {
       // 查找断开连接的记录
       if (line.includes('Disconnected')) {
         const platformMatch = line.match(/\[(\w+)\].*Disconnected/)
-        if (platformMatch) {
+        if (platformMatch && platformMatch[1]) {
           const platformKey = platformMatch[1].toLowerCase()
           const platform = platformNames[platformKey] || platformMatch[1]
           
@@ -194,7 +239,7 @@ function parseReconnectHistory(hermesDir: string): Array<any> {
           
           for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
             const nextLine = lines[j]
-            if (nextLine.includes('Connected') && (nextLine.toLowerCase().includes(platformKey) || nextLine.includes(platformMatch[1]))) {
+            if (nextLine && nextLine.includes('Connected') && (nextLine.toLowerCase().includes(platformKey) || nextLine.includes(platformMatch[1]!))) {
               success = true
               duration = '2-3s'
               break
@@ -254,7 +299,7 @@ function getDirSize(path: string): string {
   }
 }
 
-function getMockData() {
+function getMockData(): GatewayResponse {
   return {
     status: 'offline',
     uptime: 'N/A',
@@ -278,7 +323,7 @@ function getMockData() {
         messageCount: 0
       }
     ],
-    messageQueue: [],
+    messageQueue: [] as MessageQueueItem[],
     reconnectHistory: [],
     pairedUsers: [],
     pid: null,

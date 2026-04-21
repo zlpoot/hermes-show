@@ -29,9 +29,12 @@ export const getHermesPath = (): string => {
           // 找到 WSL，尝试获取用户名
           const users = fs.readdirSync(wslPath).filter(u => !u.startsWith('.'))
           if (users.length > 0) {
-            const wslHermesPath = path.join(wslPath, users[0], '.hermes')
-            if (fs.existsSync(wslHermesPath)) {
-              return wslHermesPath
+            const user = users[0]
+            if (user) {
+              const wslHermesPath = path.join(wslPath, user, '.hermes')
+              if (fs.existsSync(wslHermesPath)) {
+                return wslHermesPath
+              }
             }
           }
         }
@@ -127,11 +130,15 @@ export const parseLogLine = (line: string) => {
   // Try standard format: 2026-04-15 06:39:53,020 INFO module: message
   const standardMatch = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})\s+([A-Z]+)\s+([^:]+):\s+(.*)$/)
   if (standardMatch) {
+    const timePart = standardMatch[1]?.split(' ')[1]?.split(',')[0] ?? ''
+    const level = standardMatch[2] ?? 'INFO'
+    const source = standardMatch[3]?.trim() ?? 'System'
+    const message = standardMatch[4] ?? ''
     return {
-      time: standardMatch[1].split(' ')[1].split(',')[0], // Just the time part
-      level: standardMatch[2],
-      source: standardMatch[3].trim(),
-      message: standardMatch[4]
+      time: timePart, // Just the time part
+      level,
+      source,
+      message
     }
   }
   

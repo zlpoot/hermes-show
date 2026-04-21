@@ -39,7 +39,7 @@ function parseSkillMd(skillPath: string): SkillMeta | null {
     const content = fs.readFileSync(skillPath, 'utf8')
     // Extract YAML frontmatter
     const match = content.match(/^---\n([\s\S]*?)\n---/)
-    if (match) {
+    if (match && match[1]) {
       return yaml.parse(match[1]) as SkillMeta
     }
   } catch (e) {}

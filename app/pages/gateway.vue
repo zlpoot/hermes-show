@@ -7,7 +7,7 @@
         <span class="text-sm font-medium">已连接 Hermes Agent</span>
       </div>
       <button @click="doRefresh" class="text-xs hover:underline flex items-center gap-1">
-        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" />
         刷新
       </button>
     </div>
@@ -33,7 +33,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">连接数</span>
-          <Users size="16" class="text-blue-400" />
+          <Users :size="16" class="text-blue-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.connections?.length || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -44,7 +44,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">消息队列</span>
-          <Mail size="16" class="text-amber-400" />
+          <Mail :size="16" class="text-amber-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.messageQueue?.length || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -55,7 +55,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">重连次数</span>
-          <RefreshCw size="16" class="text-red-400" />
+          <RefreshCw :size="16" class="text-red-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.reconnectCount || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -68,7 +68,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Radio size="18" class="text-primary" />
+          <Radio :size="18" class="text-primary" />
           平台连接状态
         </h3>
         <button @click="reconnectAll" class="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-lg border border-primary/30 hover:bg-primary/20 transition-colors">
@@ -81,7 +81,7 @@
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-lg bg-card flex items-center justify-center border border-card-border">
-                <component :is="getPlatformIcon(conn.platform)" size="20" :class="conn.connected ? 'text-primary' : 'text-muted-foreground'" />
+                <component :is="getPlatformIcon(conn.platform)" :size="20" :class="conn.connected ? 'text-primary' : 'text-muted-foreground'" />
               </div>
               <div>
                 <p class="font-medium text-sm">{{ conn.displayName }}</p>
@@ -112,7 +112,7 @@
     <div v-if="data?.pairedUsers?.length" class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Users size="18" class="text-primary" />
+          <Users :size="18" class="text-primary" />
           配对用户
         </h3>
         <span class="text-xs text-muted-foreground">{{ data?.pairedUsers?.length || 0 }} 个已授权</span>
@@ -122,7 +122,7 @@
              class="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-card-border">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <component :is="getPlatformIcon(user.platform)" size="14" class="text-primary" />
+              <component :is="getPlatformIcon(user.platform)" :size="14" class="text-primary" />
             </div>
             <div>
               <p class="text-sm font-medium font-mono truncate max-w-[180px]">{{ user.id.slice(0, 20) }}{{ user.id.length > 20 ? '...' : '' }}</p>
@@ -140,7 +140,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Mail size="18" class="text-primary" />
+          <Mail :size="18" class="text-primary" />
           消息队列
         </h3>
         <div class="flex items-center gap-2">
@@ -156,7 +156,7 @@
              class="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-card-border">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-card flex items-center justify-center border border-card-border">
-              <component :is="getPlatformIcon(msg.platform)" size="14" class="text-primary" />
+              <component :is="getPlatformIcon(msg.platform)" :size="14" class="text-primary" />
             </div>
             <div>
               <p class="text-sm font-medium truncate max-w-xs">{{ msg.preview }}</p>
@@ -173,7 +173,7 @@
         </div>
         
         <div v-if="!data?.messageQueue?.length" class="text-center py-8 text-muted-foreground">
-          <Mail size="32" class="mx-auto mb-2 opacity-50" />
+          <Mail :size="32" class="mx-auto mb-2 opacity-50" />
           <p class="text-sm">队列为空</p>
         </div>
       </div>
@@ -183,7 +183,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <History size="18" class="text-primary" />
+          <History :size="18" class="text-primary" />
           重连历史
         </h3>
         <span class="text-xs text-muted-foreground">最近 24 小时</span>
@@ -225,31 +225,31 @@
     <!-- Gateway Actions -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Settings size="18" class="text-primary" />
+        <Settings :size="18" class="text-primary" />
         网关操作
       </h3>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <button @click="restartGateway" 
                 class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
-          <RefreshCw size="20" class="text-amber-400" />
+          <RefreshCw :size="20" class="text-amber-400" />
           <span class="text-sm font-medium">重启网关</span>
         </button>
         
         <button @click="reloadConfig" 
                 class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
-          <FileText size="20" class="text-blue-400" />
+          <FileText :size="20" class="text-blue-400" />
           <span class="text-sm font-medium">重载配置</span>
         </button>
         
         <button @click="enableMaintenance" 
                 class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
-          <Shield size="20" class="text-green-400" />
+          <Shield :size="20" class="text-green-400" />
           <span class="text-sm font-medium">维护模式</span>
         </button>
         
         <button @click="viewLogs" 
                 class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
-          <TerminalSquare size="20" class="text-primary" />
+          <TerminalSquare :size="20" class="text-primary" />
           <span class="text-sm font-medium">查看日志</span>
         </button>
       </div>
@@ -260,8 +260,8 @@
          class="fixed bottom-4 right-4 px-4 py-3 rounded-xl border shadow-lg z-50"
          :class="statusMessage.type === 'success' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'">
       <div class="flex items-center gap-2">
-        <CheckCircle v-if="statusMessage.type === 'success'" size="16" />
-        <AlertCircle v-else size="16" />
+        <CheckCircle v-if="statusMessage.type === 'success'" :size="16" />
+        <AlertCircle v-else :size="16" />
         <span class="text-sm">{{ statusMessage.message }}</span>
       </div>
     </div>

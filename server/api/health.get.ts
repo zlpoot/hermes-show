@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     if (os.platform() === 'linux') {
       const dfOutput = execSync('df -h / 2>/dev/null | tail -1', { encoding: 'utf-8' })
       const parts = dfOutput.trim().split(/\s+/)
-      if (parts.length >= 5) {
+      if (parts.length >= 5 && parts[1] && parts[2] && parts[3] && parts[4]) {
         diskInfo = {
           total: parts[1],
           used: parts[2],
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     } else if (os.platform() === 'darwin') {
       const dfOutput = execSync('df -h / 2>/dev/null | tail -1', { encoding: 'utf-8' })
       const parts = dfOutput.trim().split(/\s+/)
-      if (parts.length >= 5) {
+      if (parts.length >= 5 && parts[1] && parts[2] && parts[3] && parts[4]) {
         diskInfo = {
           total: parts[1],
           used: parts[2],

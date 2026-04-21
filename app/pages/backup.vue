@@ -7,7 +7,7 @@
         <span class="text-sm font-medium">已连接 Hermes Agent</span>
       </div>
       <button @click="doRefresh" class="text-xs hover:underline flex items-center gap-1">
-        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" />
         刷新
       </button>
     </div>
@@ -20,7 +20,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">数据库大小</span>
-          <Database size="16" class="text-blue-400" />
+          <Database :size="16" class="text-blue-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ formatSize(data?.summary?.dbSize || 0) }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -31,7 +31,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">配置文件</span>
-          <Settings size="16" class="text-green-400" />
+          <Settings :size="16" class="text-green-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.summary?.configCount || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -42,7 +42,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">备份文件</span>
-          <HardDrive size="16" class="text-amber-400" />
+          <HardDrive :size="16" class="text-amber-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.backups?.length || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -53,7 +53,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">自动备份</span>
-          <Clock size="16" class="text-primary" />
+          <Clock :size="16" class="text-primary" />
         </div>
         <h3 class="text-2xl font-bold font-mono" :class="data?.autoBackup?.enabled ? 'text-green-400' : 'text-muted-foreground'">
           {{ data?.autoBackup?.enabled ? '已启用' : '已禁用' }}
@@ -67,21 +67,21 @@
     <!-- Actions -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Download size="18" class="text-primary" />
+        <Download :size="18" class="text-primary" />
         备份操作
       </h3>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <button @click="exportDatabase" 
                 :disabled="isExporting"
                 class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors disabled:opacity-50">
-          <Database size="24" class="text-blue-400" />
+          <Database :size="24" class="text-blue-400" />
           <span class="text-sm font-medium">{{ isExporting ? '导出中...' : '导出数据库' }}</span>
           <span class="text-xs text-muted-foreground">SQLite → JSON</span>
         </button>
         
         <button @click="triggerImportDb" 
                 class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
-          <Upload size="24" class="text-green-400" />
+          <Upload :size="24" class="text-green-400" />
           <span class="text-sm font-medium">导入数据库</span>
           <span class="text-xs text-muted-foreground">JSON → SQLite</span>
         </button>
@@ -89,7 +89,7 @@
         
         <button @click="exportConfig" 
                 class="flex flex-col items-center gap-2 p-4 bg-muted/30 hover:bg-muted/50 rounded-xl border border-card-border transition-colors">
-          <FileText size="24" class="text-amber-400" />
+          <FileText :size="24" class="text-amber-400" />
           <span class="text-sm font-medium">导出配置</span>
           <span class="text-xs text-muted-foreground">config.yaml</span>
         </button>
@@ -97,7 +97,7 @@
         <button @click="createBackup" 
                 :disabled="isCreatingBackup"
                 class="flex flex-col items-center gap-2 p-4 bg-primary/10 hover:bg-primary/20 rounded-xl border border-primary/30 transition-colors disabled:opacity-50">
-          <Save size="24" class="text-primary" />
+          <Save :size="24" class="text-primary" />
           <span class="text-sm font-medium">{{ isCreatingBackup ? '创建中...' : '创建备份' }}</span>
           <span class="text-xs text-muted-foreground">完整备份</span>
         </button>
@@ -108,7 +108,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Clock size="18" class="text-primary" />
+          <Clock :size="18" class="text-primary" />
           自动备份设置
         </h3>
         <label class="flex items-center gap-2 cursor-pointer">
@@ -143,7 +143,7 @@
     <!-- Backup List -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <History size="18" class="text-primary" />
+        <History :size="18" class="text-primary" />
         备份历史
       </h3>
       <div class="space-y-2">
@@ -151,7 +151,7 @@
              class="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-card-border hover:border-primary/50 transition-colors">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-lg bg-card flex items-center justify-center border border-card-border">
-              <component :is="getBackupIcon(backup.type)" size="18" class="text-primary" />
+              <component :is="getBackupIcon(backup.type)" :size="18" class="text-primary" />
             </div>
             <div>
               <p class="text-sm font-medium">{{ backup.name }}</p>
@@ -167,21 +167,21 @@
           <div class="flex items-center gap-2">
             <button @click="restoreBackup(backup)" 
                     class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-primary">
-              <RotateCcw size="16" />
+              <RotateCcw :size="16" />
             </button>
             <button @click="downloadBackup(backup)" 
                     class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-green-400">
-              <Download size="16" />
+              <Download :size="16" />
             </button>
             <button @click="deleteBackup(backup)" 
                     class="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-muted-foreground hover:text-red-400">
-              <Trash2 size="16" />
+              <Trash2 :size="16" />
             </button>
           </div>
         </div>
         
         <div v-if="!data?.backups?.length" class="text-center py-8 text-muted-foreground">
-          <HardDrive size="32" class="mx-auto mb-2 opacity-50" />
+          <HardDrive :size="32" class="mx-auto mb-2 opacity-50" />
           <p class="text-sm">暂无备份记录</p>
         </div>
       </div>
@@ -192,8 +192,8 @@
          class="fixed bottom-4 right-4 px-4 py-3 rounded-xl border shadow-lg z-50"
          :class="statusMessage.type === 'success' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'">
       <div class="flex items-center gap-2">
-        <CheckCircle v-if="statusMessage.type === 'success'" size="16" />
-        <AlertCircle v-else size="16" />
+        <CheckCircle v-if="statusMessage.type === 'success'" :size="16" />
+        <AlertCircle v-else :size="16" />
         <span class="text-sm">{{ statusMessage.message }}</span>
       </div>
     </div>

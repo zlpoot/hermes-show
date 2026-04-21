@@ -157,18 +157,18 @@ function getDisplayName(userId: string, platform: string): string {
   // 微信用户
   if (platform === 'wechat') {
     const match = userId.match(/^([^@]+)/)
-    if (match) {
+    if (match && match[1]) {
       return `微信用户 ${match[1].slice(-4)}`
     }
   }
   // Telegram 用户
   if (platform === 'telegram') {
     const match = userId.match(/^(\d+)@/)
-    if (match) {
+    if (match && match[1]) {
       return `Telegram用户 ${match[1].slice(-4)}`
     }
   }
-  return userId.split('@')[0].slice(0, 8)
+  return userId.split('@')[0]?.slice(0, 8) ?? userId
 }
 
 function formatTimeAgo(seconds: number): string {

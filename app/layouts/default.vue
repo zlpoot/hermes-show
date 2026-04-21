@@ -4,7 +4,7 @@
     <aside class="w-64 glass-panel border-r-0 border-l-0 rounded-none rounded-r-2xl flex flex-col z-10 relative">
       <div class="p-6 border-b border-card-border flex items-center gap-3">
         <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-          <Bot size="20" />
+          <Bot :size="20" />
         </div>
         <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Hermes Agent</h1>
       </div>
@@ -13,7 +13,7 @@
         <NuxtLink v-for="item in menuItems" :key="item.path" :to="item.path" 
           class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
           :class="route.path === item.path ? 'bg-primary/10 text-primary shadow-[inset_2px_0_0_rgba(16,185,129,1)]' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'">
-          <component :is="item.icon" size="18" :class="route.path === item.path ? 'text-primary' : 'group-hover:text-primary/70 transition-colors'" />
+          <component :is="item.icon" :size="18" :class="route.path === item.path ? 'text-primary' : 'group-hover:text-primary/70 transition-colors'" />
           <span class="font-medium">{{ item.name }}</span>
         </NuxtLink>
         
@@ -21,9 +21,9 @@
         <div class="mt-4 pt-4 border-t border-card-border">
           <NuxtLink to="/docs" target="_blank"
             class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-muted-foreground hover:bg-muted/50 hover:text-foreground group">
-            <BookOpen size="18" class="group-hover:text-primary/70 transition-colors" />
+            <BookOpen :size="18" class="group-hover:text-primary/70 transition-colors" />
             <span class="font-medium">文档</span>
-            <ExternalLink size="14" class="ml-auto opacity-50" />
+            <ExternalLink :size="14" class="ml-auto opacity-50" />
           </NuxtLink>
         </div>
       </nav>
@@ -35,7 +35,7 @@
             <span class="text-sm font-medium text-muted-foreground">Gateway 运行中</span>
           </div>
           <button class="text-muted-foreground hover:text-primary transition-colors">
-            <Settings size="16" />
+            <Settings :size="16" />
           </button>
         </div>
       </div>
@@ -48,11 +48,11 @@
         <h2 class="text-lg font-semibold">{{ currentTitle }}</h2>
         <div class="flex items-center gap-4">
           <div class="px-3 py-1.5 rounded-full bg-muted/50 border border-card-border text-xs font-mono flex items-center gap-2">
-            <Cpu size="14" class="text-secondary" />
+            <Cpu :size="14" class="text-secondary" />
             <span>0.8.0 (v2026.4.8)</span>
           </div>
           <div class="w-8 h-8 rounded-full bg-muted flex items-center justify-center border border-card-border">
-            <User size="16" class="text-muted-foreground" />
+            <User :size="16" class="text-muted-foreground" />
           </div>
         </div>
       </header>

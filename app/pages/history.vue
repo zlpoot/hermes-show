@@ -7,12 +7,12 @@
           <div class="p-4 border-b border-card-border">
             <div class="flex items-center justify-between">
               <h3 class="font-semibold flex items-center gap-2">
-                <History size="18" class="text-primary" />
+                <History :size="18" class="text-primary" />
                 会话检索 (FTS5)
               </h3>
             </div>
             <div class="relative mt-4">
-              <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input 
                 type="text" 
                 placeholder="搜索历史对话..." 
@@ -21,7 +21,7 @@
           </div>
           <div class="flex-1 overflow-y-auto p-2 space-y-1">
             <div class="h-full flex items-center justify-center text-muted-foreground">
-              <Loader2 size="24" class="animate-spin" />
+              <Loader2 :size="24" class="animate-spin" />
             </div>
           </div>
         </template>
@@ -29,7 +29,7 @@
         <div class="p-4 border-b border-card-border">
           <div class="flex items-center justify-between">
             <h3 class="font-semibold flex items-center gap-2">
-              <History size="18" class="text-primary" />
+              <History :size="18" class="text-primary" />
               会话检索 (FTS5)
             </h3>
             <div class="flex items-center gap-2">
@@ -38,20 +38,20 @@
                 全选
               </label>
               <button v-if="selectedIds.length > 0" @click="deleteSelected" :disabled="isDeleting" class="text-red-500 hover:bg-red-500/10 p-1.5 rounded flex items-center gap-1 text-xs transition-colors">
-                <Trash2 size="14" />
+                <Trash2 :size="14" />
                 {{ isDeleting ? '删除中...' : `删除 (${selectedIds.length})` }}
               </button>
             </div>
           </div>
           <div class="relative mt-4">
-            <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input 
               type="text" 
               v-model="searchQuery" 
               @input="debouncedSearch" 
               placeholder="搜索历史对话..." 
               class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
-            <Loader2 v-if="isSearching" size="14" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
+            <Loader2 v-if="isSearching" :size="14" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
           </div>
           
           <!-- Type Filter -->
@@ -99,7 +99,7 @@
           <div class="p-4 border-b border-card-border flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center border border-card-border">
-                <MessageSquare size="20" class="text-muted-foreground" />
+                <MessageSquare :size="20" class="text-muted-foreground" />
               </div>
               <div>
                 <h2 class="font-semibold">选择一个会话</h2>
@@ -109,7 +109,7 @@
           </div>
           <div class="flex-1 overflow-y-auto p-6 space-y-6">
             <div class="h-full flex flex-col items-center justify-center text-muted-foreground">
-              <MessageSquare size="48" class="mb-4 opacity-20" />
+              <MessageSquare :size="48" class="mb-4 opacity-20" />
               <p>从左侧选择会话以查看详细信息</p>
             </div>
           </div>
@@ -118,7 +118,7 @@
         <div class="p-4 border-b border-card-border flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center border border-card-border">
-              <MessageSquare size="20" class="text-muted-foreground" />
+              <MessageSquare :size="20" class="text-muted-foreground" />
             </div>
             <div>
               <h2 class="font-semibold">{{ currentSession?.title || '选择一个会话' }}</h2>
@@ -130,14 +130,14 @@
             <span class="text-xs px-2 py-1 bg-background border border-card-border rounded-md text-muted-foreground">Tokens: {{ currentSession.tokens }}</span>
             <div class="relative">
               <button @click="showExportMenu = !showExportMenu" class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
-                <Download size="16" />
+                <Download :size="16" />
               </button>
               <div v-if="showExportMenu" class="absolute right-0 top-full mt-1 bg-card border border-card-border rounded-lg shadow-lg py-1 min-w-[140px] z-10">
                 <button @click="exportSession('json')" class="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2">
-                  <FileJson size="14" /> 导出 JSON
+                  <FileJson :size="14" /> 导出 JSON
                 </button>
                 <button @click="exportSession('md')" class="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2">
-                  <FileText size="14" /> 导出 Markdown
+                  <FileText :size="14" /> 导出 Markdown
                 </button>
               </div>
             </div>
@@ -146,7 +146,7 @@
         
         <div class="flex-1 overflow-y-auto p-6 space-y-6">
           <div v-if="!currentSession" class="h-full flex flex-col items-center justify-center text-muted-foreground">
-            <MessageSquare size="48" class="mb-4 opacity-20" />
+            <MessageSquare :size="48" class="mb-4 opacity-20" />
             <p>从左侧选择会话以查看详细信息</p>
           </div>
           
@@ -154,7 +154,7 @@
           <!-- Message Filter -->
           <div class="flex items-center gap-3 pb-4 border-b border-card-border">
             <div class="relative flex-1 max-w-md">
-              <Search size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input 
                 type="text" 
                 v-model="messageFilter" 
@@ -174,7 +174,7 @@
             <!-- User Message -->
             <template v-if="msg.role === 'user'">
               <div class="w-8 h-8 rounded-full bg-secondary/20 border border-secondary/30 flex items-center justify-center shrink-0">
-                <User size="16" class="text-secondary" />
+                <User :size="16" class="text-secondary" />
               </div>
               <div class="pt-1">
                 <p class="text-sm text-muted-foreground mb-1 font-medium">User</p>
@@ -187,7 +187,7 @@
             <!-- Tool Call -->
             <template v-else-if="msg.role === 'tool' || msg.tool_name">
               <div class="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
-                <Wrench size="16" class="text-amber-500" />
+                <Wrench :size="16" class="text-amber-500" />
               </div>
               <div class="pt-1 w-full">
                 <p class="text-sm text-amber-500 mb-1 font-medium">Tool Call: {{ msg.tool_name || 'unknown_tool' }}</p>
@@ -202,7 +202,7 @@
             <!-- Agent Message -->
             <template v-else-if="msg.role === 'assistant'">
               <div class="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                <Bot size="16" class="text-primary" />
+                <Bot :size="16" class="text-primary" />
               </div>
               <div class="pt-1">
                 <p class="text-sm text-primary mb-1 font-medium">Hermes Agent</p>
@@ -227,6 +227,44 @@ import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSq
 const route = useRoute()
 const router = useRouter()
 
+// Type definitions
+interface Session {
+  id: string
+  title: string
+  platform: string
+  platformDisplay?: string
+  date: string
+  tokens: string
+}
+
+interface SessionListResponse {
+  sessions: Session[]
+  platforms: { id: string; name: string; count: number }[]
+  total: number
+  page?: number
+  pageSize?: number
+  hasMore?: boolean
+  isRealHermesConnected?: boolean
+}
+
+interface SessionDetailResponse {
+  session: Session
+  messages: { role: string; content: string; tool_name?: string; timestamp?: number }[]
+  isRealHermesConnected?: boolean
+}
+
+type HistoryApiResponse = SessionListResponse | SessionDetailResponse
+
+// Type guard to check if response is a session list
+function isSessionListResponse(data: HistoryApiResponse | null | undefined): data is SessionListResponse {
+  return data !== null && data !== undefined && 'sessions' in data
+}
+
+// Type guard to check if response is a session detail
+function isSessionDetailResponse(data: HistoryApiResponse | null | undefined): data is SessionDetailResponse {
+  return data !== null && data !== undefined && 'session' in data
+}
+
 const searchQuery = ref('')
 const isSearching = ref(false)
 
@@ -240,7 +278,7 @@ const selectedTypes = ref<string[]>([])
 const platforms = ref<{ id: string; name: string; count: number }[]>([])
 
 // Fetch sessions with type filter and pagination
-const { data, refresh } = await useFetch('/api/history', {
+const { data, refresh } = await useFetch<HistoryApiResponse>('/api/history', {
   query: computed(() => ({
     types: selectedTypes.value.join(',') || undefined,
     limit: pageSize.value,
@@ -248,18 +286,23 @@ const { data, refresh } = await useFetch('/api/history', {
   }))
 })
 
-const sessions = computed(() => data.value?.sessions || [])
+const sessions = computed<Session[]>(() => {
+  if (isSessionListResponse(data.value)) {
+    return data.value.sessions
+  }
+  return []
+})
 
 // Update total count from API response
 watch(data, (newData) => {
-  if (newData?.total !== undefined) {
+  if (isSessionListResponse(newData) && newData.total !== undefined) {
     totalCount.value = newData.total
   }
 }, { immediate: true })
 
 // Active session - initialized from URL query
 const activeSession = ref((route.query.id as string) || '')
-const activeSessionDetail = ref(null)
+const activeSessionDetail = ref<SessionDetailResponse | null>(null)
 
 const selectedIds = ref<string[]>([])
 const isDeleting = ref(false)
@@ -271,13 +314,13 @@ const showExportMenu = ref(false)
 
 // Initialize platforms from API response
 watch(data, (newData) => {
-  if (newData?.platforms) {
+  if (isSessionListResponse(newData) && newData.platforms) {
     platforms.value = newData.platforms
     // Auto-select all types except cron on first load
     if (selectedTypes.value.length === 0) {
       selectedTypes.value = newData.platforms
-        .filter((p: any) => p.id !== 'cron')
-        .map((p: any) => p.id)
+        .filter((p) => p.id !== 'cron')
+        .map((p) => p.id)
     }
   }
 }, { immediate: true })
@@ -385,8 +428,8 @@ const debouncedSearch = () => {
     try {
       const query = searchQuery.value.trim()
       if (query) {
-        const { data: searchData } = await useFetch(`/api/history?q=${encodeURIComponent(query)}&types=${selectedTypes.value.join(',')}&limit=${pageSize.value}&offset=0`)
-        if (searchData.value) {
+        const { data: searchData } = await useFetch<HistoryApiResponse>(`/api/history?q=${encodeURIComponent(query)}&types=${selectedTypes.value.join(',')}&limit=${pageSize.value}&offset=0`)
+        if (searchData.value && isSessionListResponse(searchData.value)) {
           data.value = searchData.value
         }
       } else {
@@ -455,7 +498,7 @@ watch(activeSession, async (newId) => {
     
     // Use $fetch to avoid caching issues
     try {
-      const detailData = await $fetch(`/api/history?id=${newId}`)
+      const detailData = await $fetch<SessionDetailResponse>(`/api/history?id=${newId}`)
       activeSessionDetail.value = detailData
     } catch (e) {
       console.error('Failed to load session detail:', e)
@@ -470,7 +513,7 @@ watch(() => route.query.id, (newId) => {
   }
 })
 
-const currentSession = computed(() => {
+const currentSession = computed<Session | undefined>(() => {
   // First try to get from detail (has fresh data)
   if (activeSessionDetail.value?.session) {
     return activeSessionDetail.value.session
@@ -479,5 +522,7 @@ const currentSession = computed(() => {
   return sessions.value.find(s => s.id === activeSession.value)
 })
 
-const messages = computed(() => activeSessionDetail.value?.messages || [])
+const messages = computed<{ role: string; content: string; tool_name?: string; timestamp?: number }[]>(() => 
+  activeSessionDetail.value?.messages || []
+)
 </script>

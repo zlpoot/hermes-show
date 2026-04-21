@@ -8,7 +8,7 @@
       </div>
       <button @click="showCreateModal = true"
         class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
-        <Plus size="16" />
+        <Plus :size="16" />
         新建任务
       </button>
     </div>
@@ -16,7 +16,7 @@
     <!-- Jobs List -->
     <div class="flex-1 overflow-y-auto">
       <div v-if="jobs.length === 0" class="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <Clock size="48" class="mb-4 opacity-20" />
+        <Clock :size="48" class="mb-4 opacity-20" />
         <p>暂无定时任务</p>
         <p class="text-sm mt-1">点击"新建任务"创建第一个定时任务</p>
       </div>
@@ -38,21 +38,21 @@
               </div>
               <div class="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                 <span class="flex items-center gap-1">
-                  <Clock size="14" />
+                  <Clock :size="14" />
                   {{ job.schedule?.display || job.schedule?.value || '-' }}
                 </span>
                 <span v-if="job.repeat?.times" class="flex items-center gap-1">
-                  <Repeat size="14" />
+                  <Repeat :size="14" />
                   {{ job.repeat.completed || 0 }}/{{ job.repeat.times }}
                 </span>
               </div>
               <p v-if="job.prompt" class="text-sm text-muted-foreground mt-2 line-clamp-2">{{ job.prompt }}</p>
               <div class="flex items-center gap-3 mt-2">
                 <span v-if="job.skills?.length" class="text-xs text-primary flex items-center gap-1">
-                  <BookOpen size="12" /> {{ job.skills.join(', ') }}
+                  <BookOpen :size="12" /> {{ job.skills.join(', ') }}
                 </span>
                 <span v-if="job.script" class="text-xs text-amber-400 flex items-center gap-1">
-                  <TerminalSquare size="12" /> {{ job.script }}
+                  <TerminalSquare :size="12" /> {{ job.script }}
                 </span>
               </div>
             </div>
@@ -60,17 +60,17 @@
               <button @click.stop="toggleJob(job)" 
                 class="p-2 hover:bg-muted/50 rounded-lg transition-colors"
                 :title="job.enabled === false ? '启用' : '暂停'">
-                <component :is="job.enabled === false ? Play : Pause" size="16" class="text-muted-foreground" />
+                <component :is="job.enabled === false ? Play : Pause" :size="16" class="text-muted-foreground" />
               </button>
               <button @click.stop="runJob(job)" 
                 class="p-2 hover:bg-muted/50 rounded-lg transition-colors"
                 title="立即执行">
-                <Rocket size="16" class="text-muted-foreground" />
+                <Rocket :size="16" class="text-muted-foreground" />
               </button>
               <button @click.stop="deleteJob(job)" 
                 class="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
                 title="删除">
-                <Trash2 size="16" class="text-destructive" />
+                <Trash2 :size="16" class="text-destructive" />
               </button>
             </div>
           </div>
@@ -161,7 +161,7 @@
             <p class="text-sm text-muted-foreground mt-1">{{ selectedJob.schedule?.display }}</p>
           </div>
           <button @click="selectedJob = null" class="p-2 hover:bg-muted/50 rounded-lg">
-            <X size="16" />
+            <X :size="16" />
           </button>
         </div>
 
@@ -226,6 +226,14 @@ interface CronJob {
   last_status?: string
 }
 
+interface CronListResponse {
+  jobs?: CronJob[]
+}
+
+interface CronDetailResponse {
+  outputs?: any[]
+}
+
 const jobs = ref<CronJob[]>([])
 const showCreateModal = ref(false)
 const editingJob = ref<CronJob | null>(null)
@@ -243,8 +251,8 @@ const form = ref({
 
 const loadJobs = async () => {
   try {
-    const data = await $fetch('/api/cron')
-    jobs.value = data.jobs || []
+    const data = await $fetch<CronListResponse>('/api/cron')
+    jobs.value = data?.jobs || []
   } catch (e) {
     console.error('Failed to load jobs:', e)
   }
@@ -253,8 +261,8 @@ const loadJobs = async () => {
 const selectJob = async (job: CronJob) => {
   selectedJob.value = job
   try {
-    const data = await $fetch(`/api/cron?id=${job.id}`)
-    jobOutputs.value = data.outputs || []
+    const data = await $fetch<CronDetailResponse>(`/api/cron?id=${job.id}`)
+    jobOutputs.value = data?.outputs || []
   } catch (e) {
     jobOutputs.value = []
   }

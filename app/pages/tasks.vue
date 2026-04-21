@@ -8,7 +8,7 @@
       </div>
       <button @click="showAddModal = true" 
               class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
-        <Plus size="18" />
+        <Plus :size="18" />
         新建任务
       </button>
     </div>
@@ -18,7 +18,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between">
           <span class="text-xs text-muted-foreground">待处理</span>
-          <Clock size="16" class="text-amber-400" />
+          <Clock :size="16" class="text-amber-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono mt-1">{{ stats.pending }}</h3>
       </div>
@@ -26,7 +26,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between">
           <span class="text-xs text-muted-foreground">执行中</span>
-          <Loader2 size="16" class="text-blue-400 animate-spin" />
+          <Loader2 :size="16" class="text-blue-400 animate-spin" />
         </div>
         <h3 class="text-2xl font-bold font-mono mt-1">{{ stats.in_progress }}</h3>
       </div>
@@ -34,7 +34,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between">
           <span class="text-xs text-muted-foreground">已完成</span>
-          <CheckCircle size="16" class="text-green-400" />
+          <CheckCircle :size="16" class="text-green-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono mt-1">{{ stats.completed }}</h3>
       </div>
@@ -42,7 +42,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between">
           <span class="text-xs text-muted-foreground">失败</span>
-          <XCircle size="16" class="text-red-400" />
+          <XCircle :size="16" class="text-red-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono mt-1">{{ stats.failed }}</h3>
       </div>
@@ -50,7 +50,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between">
           <span class="text-xs text-muted-foreground">总计</span>
-          <ListTodo size="16" class="text-primary" />
+          <ListTodo :size="16" class="text-primary" />
         </div>
         <h3 class="text-2xl font-bold font-mono mt-1">{{ stats.total }}</h3>
       </div>
@@ -60,7 +60,7 @@
     <div v-if="stats.currentTask" class="glass-panel p-6 border-primary/50">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Loader2 size="18" class="text-primary animate-spin" />
+          <Loader2 :size="18" class="text-primary animate-spin" />
           当前执行中
         </h3>
         <span class="text-xs text-muted-foreground">
@@ -81,7 +81,7 @@
     <div class="glass-panel p-4">
       <div class="flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-2">
-          <Filter size="16" class="text-muted-foreground" />
+          <Filter :size="16" class="text-muted-foreground" />
           <select v-model="filters.status" @change="loadTasks" 
                   class="bg-card border border-card-border rounded-lg px-3 py-1.5 text-sm">
             <option value="all">全部状态</option>
@@ -107,7 +107,7 @@
         
         <div class="flex-1 min-w-[200px]">
           <div class="relative">
-            <Search size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input v-model="filters.search" @input="debouncedSearch" 
                    placeholder="搜索任务..."
                    class="w-full bg-card border border-card-border rounded-lg pl-9 pr-3 py-1.5 text-sm" />
@@ -115,7 +115,7 @@
         </div>
         
         <button @click="loadTasks" class="p-2 hover:bg-muted/30 rounded-lg transition-colors">
-          <RefreshCw size="16" :class="{ 'animate-spin': loading }" />
+          <RefreshCw :size="16" :class="{ 'animate-spin': loading }" />
         </button>
       </div>
     </div>
@@ -166,12 +166,12 @@
                   <button @click="editTask(task)" 
                           class="p-1.5 hover:bg-muted/50 rounded transition-colors"
                           :disabled="task.status === 'in_progress'">
-                    <Edit2 size="14" class="text-muted-foreground hover:text-primary" />
+                    <Edit2 :size="14" class="text-muted-foreground hover:text-primary" />
                   </button>
                   <button @click="deleteTask(task)" 
                           class="p-1.5 hover:bg-red-500/20 rounded transition-colors"
                           :disabled="task.status === 'in_progress'">
-                    <Trash2 size="14" class="text-muted-foreground hover:text-red-400" />
+                    <Trash2 :size="14" class="text-muted-foreground hover:text-red-400" />
                   </button>
                 </div>
               </td>
@@ -180,7 +180,7 @@
         </table>
         
         <div v-if="!tasks.length" class="text-center py-12 text-muted-foreground">
-          <ListTodo size="48" class="mx-auto mb-4 opacity-50" />
+          <ListTodo :size="48" class="mx-auto mb-4 opacity-50" />
           <p>暂无任务</p>
         </div>
       </div>
@@ -320,7 +320,7 @@ const availableChannels = ref<Array<{ id: string; name: string; type: string }>>
 // 加载通知频道
 const loadNotificationChannels = async () => {
   try {
-    const res = await $fetch('/api/notification-channels')
+    const res = await $fetch('/api/notification-channels') as any
     if (res.channels) {
       availableChannels.value = res.channels
         .filter((c: any) => c.enabled)
@@ -349,7 +349,7 @@ const loadTasks = async () => {
       ...(filters.search && { search: filters.search })
     })
     
-    const res = await $fetch(`/api/tasks/queue?${params}`)
+    const res = await $fetch(`/api/tasks/queue?${params}`) as any
     tasks.value = res.tasks || []
     total.value = res.total || 0
     totalPages.value = res.totalPages || 1
@@ -404,7 +404,7 @@ const editTask = (task: any) => {
     if (taskChannel) {
       taskForm.notify_channels = [taskChannel.id]
     } else if (availableChannels.value.length > 0) {
-      taskForm.notify_channels = [availableChannels.value[0].id]
+      taskForm.notify_channels = [(availableChannels.value[0] as any).id]
     }
   } else {
     taskForm.notify_channels = []

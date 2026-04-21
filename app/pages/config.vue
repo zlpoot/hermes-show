@@ -4,7 +4,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center gap-4">
         <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-          <Cpu class="text-primary" size="24" />
+          <Cpu class="text-primary" :size="24" />
         </div>
         <div class="flex-1">
           <div class="flex items-center gap-3">
@@ -20,7 +20,7 @@
     <!-- Model Settings -->
     <div class="glass-panel p-6">
       <div class="flex items-center gap-2 mb-6">
-        <Zap size="18" class="text-primary" />
+        <Zap :size="18" class="text-primary" />
         <h3 class="text-lg font-semibold">模型配置</h3>
       </div>
 
@@ -66,7 +66,7 @@
     <!-- Agent Settings -->
     <div class="glass-panel p-6">
       <div class="flex items-center gap-2 mb-6">
-        <Settings size="18" class="text-primary" />
+        <Settings :size="18" class="text-primary" />
         <h3 class="text-lg font-semibold">Agent 设置</h3>
       </div>
       
@@ -116,7 +116,7 @@
     <!-- Terminal Settings -->
     <div class="glass-panel p-6">
       <div class="flex items-center gap-2 mb-6">
-        <TerminalSquare size="18" class="text-primary" />
+        <TerminalSquare :size="18" class="text-primary" />
         <h3 class="text-lg font-semibold">终端配置</h3>
       </div>
       
@@ -149,7 +149,7 @@
       <!-- Security -->
       <div class="glass-panel p-6">
         <div class="flex items-center gap-2 mb-6">
-          <Shield size="18" class="text-primary" />
+          <Shield :size="18" class="text-primary" />
           <h3 class="text-lg font-semibold">安全设置</h3>
         </div>
         
@@ -181,7 +181,7 @@
       <!-- Logging & Display -->
       <div class="glass-panel p-6">
         <div class="flex items-center gap-2 mb-6">
-          <FileText size="18" class="text-primary" />
+          <FileText :size="18" class="text-primary" />
           <h3 class="text-lg font-semibold">日志与显示</h3>
         </div>
         
@@ -233,8 +233,8 @@
     <div class="flex justify-end gap-3">
       <button @click="resetForm" class="btn-outline">重置</button>
       <button @click="saveConfig" :disabled="isSaving" class="btn-primary flex items-center gap-2">
-        <Loader2 v-if="isSaving" size="16" class="animate-spin" />
-        <Save v-else size="16" />
+        <Loader2 v-if="isSaving" :size="16" class="animate-spin" />
+        <Save v-else :size="16" />
         <span>{{ isSaving ? '保存中...' : '保存配置' }}</span>
       </button>
     </div>
@@ -242,8 +242,8 @@
     <!-- Message -->
     <div v-if="message" class="glass-panel p-4 rounded-xl flex items-center gap-3"
       :class="message.type === 'success' ? 'bg-primary/10 border border-primary/30' : 'bg-red-500/10 border border-red-500/30'">
-      <CheckCircle2 v-if="message.type === 'success'" class="text-primary" size="20" />
-      <AlertCircle v-else class="text-red-500" size="20" />
+      <CheckCircle2 v-if="message.type === 'success'" class="text-primary" :size="20" />
+      <AlertCircle v-else class="text-red-500" :size="20" />
       <span class="text-sm" :class="message.type === 'success' ? 'text-primary' : 'text-red-500'">{{ message.text }}</span>
     </div>
   </div>
@@ -253,11 +253,69 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Cpu, Zap, Settings, TerminalSquare, Shield, FileText, Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-vue-next'
 
-const { data: initialData } = await useFetch('/api/config')
+// Type definitions for API response
+interface ProviderConfig {
+  name: string
+  base_url: string
+  key_env: string
+  api_mode: string
+  default_model?: string
+}
+
+interface ConfigData {
+  model?: {
+    provider?: string
+    default?: string
+    api_mode?: string
+  }
+  providers?: Record<string, ProviderConfig>
+  agent?: {
+    max_tokens?: number
+    max_turns?: number
+    reasoning_effort?: string
+    save_trajectories?: boolean
+    gateway_timeout?: number
+    verbose?: boolean
+  }
+  streaming?: {
+    enabled?: boolean
+  }
+  terminal?: {
+    backend?: string
+    timeout?: number
+    persistent_shell?: boolean
+  }
+  logging?: {
+    level?: string
+    max_size_mb?: number
+  }
+  display?: {
+    personality?: string
+  }
+  mcp?: {
+    osv_scanning?: boolean
+  }
+  security?: {
+    redact_secrets?: boolean
+    tirith_enabled?: boolean
+  }
+  approvals?: {
+    mode?: string
+    timeout?: number
+  }
+  isRealHermesConnected?: boolean
+  configPath?: string | null
+}
+
+const { data: initialData } = await useFetch<ConfigData>('/api/config')
 
 const currentProviderConfig = computed(() => {
   const providerId = form.model.provider
-  return initialData.value?.providers?.[providerId]
+  const providers = initialData.value?.providers
+  if (providers && providerId in providers) {
+    return providers[providerId]
+  }
+  return undefined
 })
 
 const form = reactive({
@@ -305,8 +363,11 @@ const message = ref<{ type: 'success' | 'error', text: string } | null>(null)
 
 onMounted(() => {
   if (initialData.value) {
-    form.model.provider = initialData.value.model?.provider || ''
-    form.model.default = initialData.value.model?.default || ''
+    const modelConfig = initialData.value.model
+    if (modelConfig) {
+      form.model.provider = modelConfig.provider || ''
+      form.model.default = modelConfig.default || ''
+    }
     Object.assign(form.agent, initialData.value.agent || {})
     Object.assign(form.streaming, initialData.value.streaming || {})
     Object.assign(form.terminal, initialData.value.terminal || {})
@@ -320,8 +381,11 @@ onMounted(() => {
 
 const resetForm = () => {
   if (initialData.value) {
-    form.model.provider = initialData.value.model?.provider || ''
-    form.model.default = initialData.value.model?.default || ''
+    const modelConfig = initialData.value.model
+    if (modelConfig) {
+      form.model.provider = modelConfig.provider || ''
+      form.model.default = modelConfig.default || ''
+    }
     Object.assign(form.agent, initialData.value.agent || {})
     Object.assign(form.streaming, initialData.value.streaming || {})
     Object.assign(form.terminal, initialData.value.terminal || {})

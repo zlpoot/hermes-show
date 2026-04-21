@@ -229,7 +229,7 @@ export default defineEventHandler(async (event) => {
   
   // 发送通知到所有目标频道
   const results = await Promise.all(
-    targetChannels.map(channelId => 
+    targetChannels.map(channelId =>
       sendNotificationToChannel(channelId, body, config)
     )
   )
@@ -237,6 +237,57 @@ export default defineEventHandler(async (event) => {
   // 统计结果
   const successCount = results.filter(r => r.success).length
   const failCount = results.filter(r => !r.success).length
+  
+  // 记录通知历史
+  try {
+    const historyPath = path.join(getHermesPath(), 'notification_history.json')
+    let history: any[] = []
+    
+    try {
+      if (fs.existsSync(historyPath)) {
+        history = JSON.parse(fs.readFileSync(historyPath, 'utf-8'))
+      }
+    } catch (e) {
+      // ignore
+    }
+    
+    for (const result of results) {
+      const channel = config.channels[result.channel]
+      history.push({
+        id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        timestamp: Date.now(),
+        event: body.event,
+        severity: body.severity,
+        title: body.title,
+        message: body.message.slice(0, 200),
+        channelId: result.channel,
+        channelName: channel?.name || result.channel,
+        channelType: channel?.type || 'unknown',
+        status: result.success ? 'sent' : 'failed',
+        error: result.error
+      })
+    }
+    
+    // 只保留最近1000条
+    history = history.slice(-1000)
+    fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8')
+  } catch (e) {
+    console.error('[notify] Failed to record history', e)
+  }
+  
+  // 更新频道状态
+  if (failCount > 0) {
+    const updatedConfig = { ...config }
+    for (const result of results) {
+      if (!result.success && result.channel) {
+        const channel = updatedConfig.channels[result.channel]
+        if (channel) {
+          channel.status = 'error'
+        }
+      }
+    }
+    saveNotificationConfig(updatedConfig)
+  }
   
   return {
     success: successCount > 0,

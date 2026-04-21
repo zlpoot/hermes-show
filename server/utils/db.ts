@@ -78,7 +78,8 @@ export interface Task {
   status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled'
   priority: number
   parent_id: number | null
-  notify_channels: string | null
+  notify_channels: string[]
+  notify_discord: boolean
   created_at: string
   started_at: string | null
   completed_at: string | null
@@ -88,18 +89,30 @@ export interface Task {
 // ============ Task 操作函数 ============
 
 /**
+ * 解析任务数据（处理 JSON 字段）
+ */
+function parseTask(task: any): Task {
+  return {
+    ...task,
+    notify_channels: task.notify_channels ? JSON.parse(task.notify_channels) : [],
+    notify_discord: task.notify_discord === 1 || task.notify_discord === true
+  }
+}
+
+/**
  * 获取所有任务
  */
 export function getAllTasks(): Task[] {
-  return query<Task>('SELECT * FROM tasks ORDER BY priority, created_at DESC')
+  const tasks = query<any>('SELECT * FROM tasks ORDER BY priority, created_at DESC')
+  return tasks.map(parseTask)
 }
 
 /**
  * 根据 ID 获取任务
  */
 export function getTaskById(id: number): Task | null {
-  const tasks = query<Task>(`SELECT * FROM tasks WHERE id = ${id}`)
-  return tasks[0] || null
+  const tasks = query<any>(`SELECT * FROM tasks WHERE id = ${id}`)
+  return tasks[0] ? parseTask(tasks[0]) : null
 }
 
 /**
@@ -112,11 +125,12 @@ export function createTask(data: {
   status?: string
   priority?: number
   parent_id?: number
-  notify_channels?: string
+  notify_channels?: string[]
+  notify_discord?: boolean
 }): Task {
   const now = new Date().toISOString()
   const result = run(
-    `INSERT INTO tasks (title, description, type, status, priority, parent_id, notify_channels, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (title, description, type, status, priority, parent_id, notify_channels, notify_discord, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.title,
       data.description || null,
@@ -124,7 +138,8 @@ export function createTask(data: {
       data.status || 'pending',
       data.priority || 3,
       data.parent_id || null,
-      data.notify_channels || null,
+      data.notify_channels ? JSON.stringify(data.notify_channels) : null,
+      data.notify_discord !== undefined ? (data.notify_discord ? 1 : 0) : 1,
       now
     ]
   )
@@ -139,7 +154,7 @@ export function updateTask(id: number, data: Partial<Task>): Task | null {
   const updates: string[] = []
   const values: any[] = []
   
-  const allowedFields = ['title', 'description', 'type', 'status', 'priority', 'parent_id', 'notify_channels', 'started_at', 'completed_at', 'result']
+  const allowedFields = ['title', 'description', 'type', 'status', 'priority', 'parent_id', 'notify_channels', 'notify_discord', 'started_at', 'completed_at', 'result']
   
   for (const [key, value] of Object.entries(data)) {
     if (allowedFields.includes(key)) {

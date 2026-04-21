@@ -180,7 +180,7 @@ export default defineEventHandler(async (event) => {
         try {
           const countWhere = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : ''
           if (searchQuery) {
-            const countResult = await prisma.$queryRawUnsafe(
+            const countResult = await prisma.$queryRawUnsafe<{ total: bigint | number }[]>(
               `SELECT COUNT(DISTINCT s.id) as total
                FROM sessions s
                LEFT JOIN messages m ON s.id = m.session_id
@@ -189,7 +189,7 @@ export default defineEventHandler(async (event) => {
             )
             totalCount = Number(countResult[0]?.total || 0)
           } else {
-            const countResult = await prisma.$queryRawUnsafe(
+            const countResult = await prisma.$queryRawUnsafe<{ total: bigint | number }[]>(
               `SELECT COUNT(*) as total FROM sessions ${countWhere}`,
               ...params
             )

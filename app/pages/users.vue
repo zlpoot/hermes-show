@@ -7,7 +7,7 @@
         <span class="text-sm font-medium">已连接 Hermes Agent</span>
       </div>
       <button @click="doRefresh" class="text-xs hover:underline flex items-center gap-1">
-        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" />
         刷新
       </button>
     </div>
@@ -20,7 +20,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">授权用户</span>
-          <Users size="16" class="text-primary" />
+          <Users :size="16" class="text-primary" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.stats?.authorizedUsers || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -31,7 +31,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">今日活跃</span>
-          <Activity size="16" class="text-green-400" />
+          <Activity :size="16" class="text-green-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.stats?.activeToday || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -42,7 +42,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">黑名单</span>
-          <Ban size="16" class="text-red-400" />
+          <Ban :size="16" class="text-red-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.stats?.blacklisted || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -53,13 +53,13 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">配对模式</span>
-          <Shield size="16" class="text-blue-400" />
+          <Shield :size="16" class="text-blue-400" />
         </div>
-        <h3 class="text-xl font-bold" :class="data?.pairingMode === 'open' ? 'text-green-400' : 'text-amber-400'">
-          {{ data?.pairingMode === 'open' ? '开放模式' : '配对模式' }}
+        <h3 class="text-xl font-bold" :class="(data as any)?.pairingMode === 'open' ? 'text-green-400' : 'text-amber-400'">
+          {{ (data as any)?.pairingMode === 'open' ? '开放模式' : '配对模式' }}
         </h3>
         <p class="text-xs text-muted-foreground mt-1">
-          {{ data?.pairingMode === 'open' ? '所有用户可访问' : '需审批访问' }}
+          {{ (data as any)?.pairingMode === 'open' ? '所有用户可访问' : '需审批访问' }}
         </p>
       </div>
     </div>
@@ -67,7 +67,7 @@
     <!-- Global Settings -->
     <div class="glass-panel p-6">
       <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Settings2 size="18" class="text-primary" />
+        <Settings2 :size="18" class="text-primary" />
         全局设置
       </h3>
       
@@ -103,15 +103,15 @@
           <p class="font-medium text-sm mb-3">权限说明</p>
           <div class="space-y-2 text-xs text-muted-foreground">
             <div class="flex items-start gap-2">
-              <CheckCircle2 size="14" class="text-green-400 shrink-0 mt-0.5" />
+              <CheckCircle2 :size="14" class="text-green-400 shrink-0 mt-0.5" />
               <span><strong class="text-foreground">开放模式</strong>: 所有用户均可与 Agent 对话</span>
             </div>
             <div class="flex items-start gap-2">
-              <Shield size="14" class="text-amber-400 shrink-0 mt-0.5" />
+              <Shield :size="14" class="text-amber-400 shrink-0 mt-0.5" />
               <span><strong class="text-foreground">配对模式</strong>: 新用户需管理员审批</span>
             </div>
             <div class="flex items-start gap-2">
-              <Ban size="14" class="text-red-400 shrink-0 mt-0.5" />
+              <Ban :size="14" class="text-red-400 shrink-0 mt-0.5" />
               <span><strong class="text-foreground">黑名单</strong>: 黑名单用户无法使用任何功能</span>
             </div>
           </div>
@@ -123,7 +123,7 @@
     <div v-if="data?.pendingPairings?.length" class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <UserPlus size="18" class="text-amber-400" />
+          <UserPlus :size="18" class="text-amber-400" />
           待审批用户
           <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs">
             {{ data?.pendingPairings?.length }}
@@ -136,13 +136,13 @@
              class="flex items-center justify-between p-4 bg-amber-500/5 rounded-xl border border-amber-500/20">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
-              <User size="18" class="text-amber-400" />
+              <User :size="18" class="text-amber-400" />
             </div>
             <div>
               <p class="font-medium text-sm">{{ user.displayName || user.id }}</p>
               <div class="flex items-center gap-2 text-xs text-muted-foreground">
                 <span class="flex items-center gap-1">
-                  <component :is="getPlatformIcon(user.platform)" size="12" />
+                  <component :is="getPlatformIcon(user.platform)" :size="12" />
                   {{ user.platform }}
                 </span>
                 <span>•</span>
@@ -153,12 +153,12 @@
           <div class="flex items-center gap-2">
             <button @click="approveUser(user)" 
                     class="px-3 py-1.5 bg-green-500/10 text-green-400 rounded-lg border border-green-500/30 hover:bg-green-500/20 transition-colors text-sm flex items-center gap-1">
-              <Check size="14" />
+              <Check :size="14" />
               批准
             </button>
             <button @click="rejectUser(user)" 
                     class="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg border border-red-500/30 hover:bg-red-500/20 transition-colors text-sm flex items-center gap-1">
-              <X size="14" />
+              <X :size="14" />
               拒绝
             </button>
           </div>
@@ -170,14 +170,14 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <UserCheck size="18" class="text-primary" />
+          <UserCheck :size="18" class="text-primary" />
           授权用户
         </h3>
         <div class="flex items-center gap-2">
           <input type="text" v-model="userSearch" placeholder="搜索用户..." 
                  class="text-xs bg-background border border-card-border rounded-lg px-3 py-1.5 w-40" />
           <button @click="addUser" class="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-lg border border-primary/30 hover:bg-primary/20 transition-colors flex items-center gap-1">
-            <Plus size="14" />
+            <Plus :size="14" />
             添加用户
           </button>
         </div>
@@ -201,7 +201,7 @@
               <td class="py-3 px-4">
                 <div class="flex items-center gap-3">
                   <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                    <User size="14" class="text-primary" />
+                    <User :size="14" class="text-primary" />
                   </div>
                   <div>
                     <p class="font-medium">{{ user.displayName || user.id }}</p>
@@ -211,7 +211,7 @@
               </td>
               <td class="py-3 px-4">
                 <div class="flex items-center gap-1.5">
-                  <component :is="getPlatformIcon(user.platform)" size="14" />
+                  <component :is="getPlatformIcon(user.platform)" :size="14" />
                   <span>{{ user.platform }}</span>
                 </div>
               </td>
@@ -234,15 +234,15 @@
                 <div class="flex items-center gap-1">
                   <button @click="viewUserDetail(user)" 
                           class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-primary">
-                    <Eye size="14" />
+                    <Eye :size="14" />
                   </button>
                   <button @click="blockUser(user)" 
                           class="p-1.5 hover:bg-red-500/10 rounded transition-colors text-muted-foreground hover:text-red-400">
-                    <Ban size="14" />
+                    <Ban :size="14" />
                   </button>
                   <button @click="removeUser(user)" 
                           class="p-1.5 hover:bg-red-500/10 rounded transition-colors text-muted-foreground hover:text-red-400">
-                    <Trash2 size="14" />
+                    <Trash2 :size="14" />
                   </button>
                 </div>
               </td>
@@ -256,7 +256,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Ban size="18" class="text-red-400" />
+          <Ban :size="18" class="text-red-400" />
           黑名单
         </h3>
       </div>
@@ -266,7 +266,7 @@
              class="flex items-center justify-between p-3 bg-red-500/5 rounded-lg border border-red-500/20">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30">
-              <UserX size="14" class="text-red-400" />
+              <UserX :size="14" class="text-red-400" />
             </div>
             <div>
               <p class="font-medium text-sm">{{ user.displayName || user.id }}</p>
@@ -286,7 +286,7 @@
         </div>
         
         <div v-if="!data?.blacklist?.length" class="text-center py-8 text-muted-foreground">
-          <Ban size="32" class="mx-auto mb-2 opacity-50" />
+          <Ban :size="32" class="mx-auto mb-2 opacity-50" />
           <p class="text-sm">黑名单为空</p>
         </div>
       </div>
@@ -344,8 +344,8 @@
          class="fixed bottom-4 right-4 px-4 py-3 rounded-xl border shadow-lg z-50"
          :class="statusMessage.type === 'success' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'">
       <div class="flex items-center gap-2">
-        <CheckCircle v-if="statusMessage.type === 'success'" size="16" />
-        <AlertCircle v-else size="16" />
+        <CheckCircle v-if="statusMessage.type === 'success'" :size="16" />
+        <AlertCircle v-else :size="16" />
         <span class="text-sm">{{ statusMessage.message }}</span>
       </div>
     </div>
@@ -365,8 +365,8 @@ const isRefreshing = ref(false)
 const statusMessage = ref<{ type: string, message: string } | null>(null)
 const showAddModal = ref(false)
 const userSearch = ref('')
-const allowAllUsers = ref(data.value?.allowAllUsers || false)
-const pairingMode = ref(data.value?.pairingMode || 'pairing')
+const allowAllUsers = ref((data.value as any)?.allowAllUsers || false)
+const pairingMode = ref((data.value as any)?.pairingMode || 'pairing')
 
 const addForm = reactive({
   userId: '',

@@ -3,9 +3,9 @@ import {
   getTaskById, 
   createTask, 
   updateTask, 
-  deleteTask, 
-  Task 
+  deleteTask
 } from '../../utils/db'
+import type { Task } from '../../utils/db'
 import { 
   notifyTaskComplete, 
   notifyTaskFailed, 
@@ -48,8 +48,8 @@ async function sendTaskCompletionNotification(task: Task) {
     taskId: task.id,
     title: task.title,
     result: task.result || '任务已成功完成',
-    duration: duration > 0 ? `${duration} 分钟` : '未知',
-    channels
+    channels,
+    metadata: { duration: duration > 0 ? `${duration} 分钟` : '未知' }
   })
 }
 

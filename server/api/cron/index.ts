@@ -237,6 +237,12 @@ export default defineEventHandler(async (event) => {
     if (body.run_now) {
       try {
         const job = jobs[index]
+        if (!job) {
+          throw createError({
+            statusCode: 404,
+            message: 'Job not found'
+          })
+        }
         const runtimeConfig = getRuntimeConfig()
         
         // 获取工作目录：优先 runtimeConfig，然后 HOME 环境变量，最后 os.homedir()

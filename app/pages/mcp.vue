@@ -7,7 +7,7 @@
         <span class="text-sm font-medium">已连接 Hermes Agent</span>
       </div>
       <button @click="doRefresh" class="text-xs hover:underline flex items-center gap-1">
-        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" />
         刷新
       </button>
     </div>
@@ -20,7 +20,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">MCP 服务器</span>
-          <Server size="16" class="text-primary" />
+          <Server :size="16" class="text-primary" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.servers?.length || 0 }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -31,7 +31,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">可用工具</span>
-          <Wrench size="16" class="text-blue-400" />
+          <Wrench :size="16" class="text-blue-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ totalTools }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -42,7 +42,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">今日调用</span>
-          <Zap size="16" class="text-amber-400" />
+          <Zap :size="16" class="text-amber-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ formatNumber(data?.stats?.todayCalls || 0) }}</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -53,7 +53,7 @@
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-muted-foreground">平均延迟</span>
-          <Timer size="16" class="text-green-400" />
+          <Timer :size="16" class="text-green-400" />
         </div>
         <h3 class="text-2xl font-bold font-mono">{{ data?.stats?.avgLatency || 0 }}ms</h3>
         <p class="text-xs text-muted-foreground mt-1">
@@ -66,11 +66,11 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Server size="18" class="text-primary" />
+          <Server :size="18" class="text-primary" />
           MCP 服务器
         </h3>
         <button @click="addServer" class="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-lg border border-primary/30 hover:bg-primary/20 transition-colors flex items-center gap-1">
-          <Plus size="14" />
+          <Plus :size="14" />
           添加服务器
         </button>
       </div>
@@ -81,7 +81,7 @@
           <div class="flex items-start justify-between mb-3">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-xl bg-card flex items-center justify-center border border-card-border">
-                <Box size="24" :class="server.connected ? 'text-primary' : 'text-muted-foreground'" />
+                <Box :size="24" :class="server.connected ? 'text-primary' : 'text-muted-foreground'" />
               </div>
               <div>
                 <div class="flex items-center gap-2">
@@ -91,21 +91,21 @@
                     {{ server.connected ? '已连接' : '断开' }}
                   </span>
                 </div>
-                <p class="text-xs text-muted-foreground font-mono">{{ server.command }}</p>
+                <p class="text-xs text-muted-foreground font-mono">{{ (server as any).command }}</p>
               </div>
             </div>
             <div class="flex items-center gap-1">
               <button @click="toggleServer(server)" 
                       class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-primary">
-                <Power size="16" />
+                <Power :size="16" />
               </button>
               <button @click="editServer(server)" 
                       class="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-blue-400">
-                <Pencil size="16" />
+                <Pencil :size="16" />
               </button>
               <button @click="deleteServer(server)" 
                       class="p-1.5 hover:bg-red-500/10 rounded transition-colors text-muted-foreground hover:text-red-400">
-                <Trash2 size="16" />
+                <Trash2 :size="16" />
               </button>
             </div>
           </div>
@@ -126,13 +126,13 @@
           </div>
           
           <div class="flex flex-wrap gap-1">
-            <span v-for="tool in server.tools?.slice(0, 4)" :key="tool" 
+            <span v-for="tool in (server as any).tools?.slice(0, 4)" :key="tool" 
                   class="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs border border-primary/20">
               {{ tool }}
             </span>
-            <span v-if="server.tools?.length > 4" 
+            <span v-if="(server as any).tools?.length > 4" 
                   class="px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs">
-              +{{ server.tools.length - 4 }} 更多
+              +{{ (server as any).tools.length - 4 }} 更多
             </span>
           </div>
         </div>
@@ -143,7 +143,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <Wrench size="18" class="text-primary" />
+          <Wrench :size="18" class="text-primary" />
           工具列表
         </h3>
         <div class="flex items-center gap-2">
@@ -174,7 +174,7 @@
               <td class="py-3 px-4">
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                    <component :is="getToolIcon(tool.category)" size="12" class="text-primary" />
+                    <component :is="getToolIcon(tool.category)" :size="12" class="text-primary" />
                   </div>
                   <span class="font-mono font-medium">{{ tool.name }}</span>
                 </div>
@@ -202,7 +202,7 @@
     <div class="glass-panel p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <BarChart2 size="18" class="text-primary" />
+          <BarChart2 :size="18" class="text-primary" />
           调用统计 (今日)
         </h3>
         <div class="flex items-center gap-2 text-xs">
@@ -246,19 +246,19 @@
       <!-- Top Tools -->
       <h4 class="text-sm font-semibold mb-3">热门工具 Top 5</h4>
       <div class="space-y-2">
-        <div v-for="(item, index) in data?.callStats?.topTools" :key="item.tool" 
+        <div v-for="(item, index) in data?.callStats?.topTools" :key="(item as any).tool" 
              class="flex items-center gap-4">
           <span class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
             {{ index + 1 }}
           </span>
           <div class="flex-1">
             <div class="flex items-center justify-between mb-1">
-              <span class="font-mono text-sm">{{ item.tool }}</span>
-              <span class="text-xs text-muted-foreground">{{ formatNumber(item.calls) }} 次</span>
+              <span class="font-mono text-sm">{{ (item as any).tool }}</span>
+              <span class="text-xs text-muted-foreground">{{ formatNumber((item as any).calls) }} 次</span>
             </div>
             <div class="h-2 bg-muted rounded-full overflow-hidden">
               <div class="h-full bg-primary rounded-full transition-all" 
-                   :style="{ width: (item.calls / (data?.callStats?.total || 1) * 100) + '%' }"></div>
+                   :style="{ width: ((item as any).calls / (data?.callStats?.total || 1) * 100) + '%' }"></div>
             </div>
           </div>
         </div>
@@ -312,8 +312,8 @@
          class="fixed bottom-4 right-4 px-4 py-3 rounded-xl border shadow-lg z-50"
          :class="statusMessage.type === 'success' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'">
       <div class="flex items-center gap-2">
-        <CheckCircle v-if="statusMessage.type === 'success'" size="16" />
-        <AlertCircle v-else size="16" />
+        <CheckCircle v-if="statusMessage.type === 'success'" :size="16" />
+        <AlertCircle v-else :size="16" />
         <span class="text-sm">{{ statusMessage.message }}</span>
       </div>
     </div>

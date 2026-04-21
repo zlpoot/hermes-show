@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between glass-panel p-4 shrink-0">
       <div class="flex items-center gap-4">
         <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-          <Terminal class="text-emerald-500" size="20" />
+          <Terminal class="text-emerald-500" :size="20" />
         </div>
         <div>
           <h2 class="text-xl font-bold">系统终端日志</h2>
@@ -17,10 +17,10 @@
       
       <div class="flex items-center gap-2">
         <button class="btn-outline flex items-center gap-2 text-sm" @click="clearLogs">
-          <Trash2 size="14" /> 清空
+          <Trash2 :size="14" /> 清空
         </button>
         <button class="btn-primary flex items-center gap-2 text-sm" @click="togglePause">
-          <component :is="isPaused ? Play : Pause" size="14" /> {{ isPaused ? '恢复' : '暂停' }}
+          <component :is="isPaused ? Play : Pause" :size="14" /> {{ isPaused ? '恢复' : '暂停' }}
         </button>
       </div>
     </div>
@@ -52,7 +52,7 @@
         </div>
         
         <div class="flex items-center gap-2 flex-1 min-w-[200px]">
-          <Search size="16" class="text-muted-foreground" />
+          <Search :size="16" class="text-muted-foreground" />
           <input type="text" v-model="searchKeyword" placeholder="搜索日志内容..." 
             class="flex-1 bg-background border border-card-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary" />
         </div>
@@ -278,7 +278,9 @@ onMounted(() => {
       logs.value.push({
         id: generateLogId(),
         time: timeStr,
-        ...randomMsg
+        level: randomMsg!.level,
+        source: randomMsg!.source,
+        message: randomMsg!.message
       })
       
       // Keep max logs based on linesCount

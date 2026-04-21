@@ -29,20 +29,20 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
 
 function getModelPricing(model: string): { input: number; output: number } {
   const m = model.toLowerCase()
-  if (m.includes('gpt-4o-mini')) return MODEL_PRICING['gpt-4o-mini']
-  if (m.includes('gpt-4o')) return MODEL_PRICING['gpt-4o']
-  if (m.includes('gpt-4-turbo')) return MODEL_PRICING['gpt-4-turbo']
-  if (m.includes('gpt-4')) return MODEL_PRICING['gpt-4']
-  if (m.includes('gpt-3.5')) return MODEL_PRICING['gpt-3.5-turbo']
-  if (m.includes('claude-3-opus')) return MODEL_PRICING['claude-3-opus']
-  if (m.includes('claude-3-sonnet') || m.includes('claude-sonnet-4')) return MODEL_PRICING['claude-3-sonnet']
-  if (m.includes('claude-3-haiku')) return MODEL_PRICING['claude-3-haiku']
-  if (m.includes('deepseek-coder')) return MODEL_PRICING['deepseek-coder']
-  if (m.includes('deepseek')) return MODEL_PRICING['deepseek-chat']
-  if (m.includes('glm-4')) return MODEL_PRICING['glm-4']
-  if (m.includes('glm-5') || m.includes('glm5')) return MODEL_PRICING['glm-5']
-  if (m.includes('ctyun') || m.includes('天翼')) return MODEL_PRICING['ctyun']
-  return MODEL_PRICING['default']
+  if (m.includes('gpt-4o-mini')) return MODEL_PRICING['gpt-4o-mini'] ?? MODEL_PRICING['default']!
+  if (m.includes('gpt-4o')) return MODEL_PRICING['gpt-4o'] ?? MODEL_PRICING['default']!
+  if (m.includes('gpt-4-turbo')) return MODEL_PRICING['gpt-4-turbo'] ?? MODEL_PRICING['default']!
+  if (m.includes('gpt-4')) return MODEL_PRICING['gpt-4'] ?? MODEL_PRICING['default']!
+  if (m.includes('gpt-3.5')) return MODEL_PRICING['gpt-3.5-turbo'] ?? MODEL_PRICING['default']!
+  if (m.includes('claude-3-opus')) return MODEL_PRICING['claude-3-opus'] ?? MODEL_PRICING['default']!
+  if (m.includes('claude-3-sonnet') || m.includes('claude-sonnet-4')) return MODEL_PRICING['claude-3-sonnet'] ?? MODEL_PRICING['default']!
+  if (m.includes('claude-3-haiku')) return MODEL_PRICING['claude-3-haiku'] ?? MODEL_PRICING['default']!
+  if (m.includes('deepseek-coder')) return MODEL_PRICING['deepseek-coder'] ?? MODEL_PRICING['default']!
+  if (m.includes('deepseek')) return MODEL_PRICING['deepseek-chat'] ?? MODEL_PRICING['default']!
+  if (m.includes('glm-4')) return MODEL_PRICING['glm-4'] ?? MODEL_PRICING['default']!
+  if (m.includes('glm-5') || m.includes('glm5')) return MODEL_PRICING['glm-5'] ?? MODEL_PRICING['default']!
+  if (m.includes('ctyun') || m.includes('天翼')) return MODEL_PRICING['ctyun'] ?? MODEL_PRICING['default']!
+  return MODEL_PRICING['default']!
 }
 
 export default defineEventHandler(async (event) => {
@@ -140,12 +140,15 @@ export default defineEventHandler(async (event) => {
         byProvider[providerKey].model = model // 更新为最新模型
         
         // 按日期聚合
-        const date = new Date(startedAt * 1000).toISOString().split('T')[0]
-        if (!byDate[date]) {
-          byDate[date] = { cost: 0, tokens: 0 }
+        const dateObj = new Date(startedAt * 1000)
+        const date = dateObj.toISOString().split('T')[0]
+        if (date) {
+          if (!byDate[date]) {
+            byDate[date] = { cost: 0, tokens: 0 }
+          }
+          byDate[date].cost += cost
+          byDate[date].tokens += tokens
         }
-        byDate[date].cost += cost
-        byDate[date].tokens += tokens
       }
       
       // 上月统计
@@ -185,14 +188,15 @@ export default defineEventHandler(async (event) => {
     
     // 近7天消费趋势
     const last7Days: { label: string; cost: number }[] = []
+    const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
     for (let i = 6; i >= 0; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
-      const dateStr = d.toISOString().split('T')[0]
-      const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+      const dateStr = d.toISOString().split('T')[0] ?? ''
+      const dayIndex = d.getDay()
       last7Days.push({
-        label: dayNames[d.getDay()],
-        cost: parseFloat((byDate[dateStr]?.cost || 0).toFixed(4))
+        label: dayNames[dayIndex] ?? '',
+        cost: parseFloat((dateStr && byDate[dateStr]?.cost ? byDate[dateStr].cost : 0).toFixed(4))
       })
     }
     

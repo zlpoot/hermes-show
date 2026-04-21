@@ -62,6 +62,7 @@ export default defineEventHandler(async (event) => {
       
       // Calculate cost
       const pricing = MODEL_PRICING[normalizedModel] || MODEL_PRICING['default']
+      if (!pricing) continue // Skip if no pricing found
       const sessionCost = (inputTokens * pricing.input + outputTokens * pricing.output) / 1000000
       
       // Aggregate by model
@@ -79,6 +80,7 @@ export default defineEventHandler(async (event) => {
         const date = new Date(ts < 10000000000 ? ts * 1000 : ts)
         const dateStr = date.toISOString().split('T')[0]
         
+        if (!dateStr) continue // Skip if invalid date
         if (!byDate[dateStr]) {
           byDate[dateStr] = { sessions: 0, inputTokens: 0, outputTokens: 0, cost: 0 }
         }
@@ -110,7 +112,7 @@ export default defineEventHandler(async (event) => {
       datasets: [
         {
           label: '输入 Tokens',
-          data: sortedDates.map(d => byDate[d].inputTokens),
+          data: sortedDates.map(d => byDate[d]?.inputTokens ?? 0),
           borderColor: '#3b82f6',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           fill: true,
@@ -118,7 +120,7 @@ export default defineEventHandler(async (event) => {
         },
         {
           label: '输出 Tokens',
-          data: sortedDates.map(d => byDate[d].outputTokens),
+          data: sortedDates.map(d => byDate[d]?.outputTokens ?? 0),
           borderColor: '#10b981',
           backgroundColor: 'rgba(16, 185, 129, 0.1)',
           fill: true,

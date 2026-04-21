@@ -567,6 +567,384 @@ telnet smtp.gmail.com 587
     <div class="tip">
       <strong>提示</strong>：配置通知渠道后，建议先使用「测试」功能验证配置是否正确，然后再启用相关规则。
     </div>
+
+    <!-- ==================== API 文档 ==================== -->
+    <h2 id="api">API 接口</h2>
+    
+    <p>Notification Service 提供以下 API 接口用于程序化调用：</p>
+
+    <h3>接口列表</h3>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>方法</th>
+          <th>路径</th>
+          <th>描述</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/notify</code></td>
+          <td>发送通知（核心接口）</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/notifications</code></td>
+          <td>获取通知设置和统计</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/notification-channels</code></td>
+          <td>获取所有频道配置</td>
+        </tr>
+        <tr>
+          <td><code>POST</code></td>
+          <td><code>/api/notification-channels</code></td>
+          <td>创建新频道</td>
+        </tr>
+        <tr>
+          <td><code>PUT</code></td>
+          <td><code>/api/notification-channels</code></td>
+          <td>更新频道配置</td>
+        </tr>
+        <tr>
+          <td><code>DELETE</code></td>
+          <td><code>/api/notification-channels?channelId=xxx</code></td>
+          <td>删除频道</td>
+        </tr>
+        <tr>
+          <td><code>GET</code></td>
+          <td><code>/api/notification-history</code></td>
+          <td>查询通知历史</td>
+        </tr>
+        <tr>
+          <td><code>DELETE</code></td>
+          <td><code>/api/notification-history?clear=true</code></td>
+          <td>清空通知历史</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 id="send-notification">发送通知</h3>
+    
+    <h4>请求</h4>
+    <pre><code>POST /api/notify
+Content-Type: application/json
+
+{
+  "event": "task_complete",      // 必填：事件类型
+  "severity": "info",            // 可选：严重程度 (info|warning|error|critical)
+  "title": "任务完成",           // 必填：通知标题
+  "message": "任务 #123 已完成", // 必填：通知内容
+  "channels": ["discord-main"],  // 可选：指定频道，不填则自动路由
+  "metadata": {                  // 可选：附加信息
+    "taskId": 123,
+    "duration": "5m"
+  }
+}</code></pre>
+
+    <h4>响应</h4>
+    <pre><code>{
+  "success": true,
+  "event": "task_complete",
+  "severity": "info",
+  "routedChannels": ["discord-main"],
+  "results": [
+    {
+      "success": true,
+      "channel": "discord-main",
+      "error": null
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "succeeded": 1,
+    "failed": 0
+  }
+}</code></pre>
+
+    <h3 id="event-types">事件类型完整列表</h3>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>事件类型</th>
+          <th>说明</th>
+          <th>默认严重程度</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>task_complete</code></td>
+          <td>任务完成</td>
+          <td>info</td>
+        </tr>
+        <tr>
+          <td><code>task_failed</code></td>
+          <td>任务失败</td>
+          <td>error</td>
+        </tr>
+        <tr>
+          <td><code>gateway</code></td>
+          <td>网关状态变化</td>
+          <td>info/warning/error</td>
+        </tr>
+        <tr>
+          <td><code>error</code></td>
+          <td>错误告警</td>
+          <td>error</td>
+        </tr>
+        <tr>
+          <td><code>warning</code></td>
+          <td>性能警告</td>
+          <td>warning</td>
+        </tr>
+        <tr>
+          <td><code>system</code></td>
+          <td>系统事件</td>
+          <td>info</td>
+        </tr>
+        <tr>
+          <td><code>cron</code></td>
+          <td>定时任务事件</td>
+          <td>info</td>
+        </tr>
+        <tr>
+          <td><code>budget</code></td>
+          <td>预算告警</td>
+          <td>warning</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 id="severity-levels">严重程度</h3>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>级别</th>
+          <th>值</th>
+          <th>颜色</th>
+          <th>用途</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge info">信息</span></td>
+          <td><code>info</code></td>
+          <td>蓝色 (#3498db)</td>
+          <td>一般状态通知</td>
+        </tr>
+        <tr>
+          <td><span class="badge warning">警告</span></td>
+          <td><code>warning</code></td>
+          <td>橙色 (#f39c12)</td>
+          <td>需要注意的问题</td>
+        </tr>
+        <tr>
+          <td><span class="badge error">错误</span></td>
+          <td><code>error</code></td>
+          <td>红色 (#e74c3c)</td>
+          <td>错误和失败</td>
+        </tr>
+        <tr>
+          <td><span class="badge critical">紧急</span></td>
+          <td><code>critical</code></td>
+          <td>紫色 (#9b59b6)</td>
+          <td>需要立即处理</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== 使用示例 ==================== -->
+    <h2 id="examples">使用示例</h2>
+
+    <h3>Python 调用示例</h3>
+    
+    <h4>基础用法</h4>
+    <pre><code>import requests
+
+# 发送通知
+response = requests.post(
+    'http://localhost:3000/api/notify',
+    json={
+        'event': 'task_complete',
+        'severity': 'info',
+        'title': '任务完成',
+        'message': '数据处理任务已完成，共处理 1000 条记录',
+        'metadata': {
+            'taskId': 123,
+            'records': 1000,
+            'duration': '2m 30s'
+        }
+    }
+)
+
+result = response.json()
+print(f"通知发送: {'成功' if result['success'] else '失败'}")
+print(f"发送到: {result['routedChannels']}")</code></pre>
+
+    <h4>错误告警</h4>
+    <pre><code>import requests
+
+def notify_error(title: str, error: Exception, context: dict = None):
+    """发送错误告警"""
+    response = requests.post(
+        'http://localhost:3000/api/notify',
+        json={
+            'event': 'error',
+            'severity': 'error',
+            'title': title,
+            'message': str(error),
+            'metadata': {
+                'error_type': type(error).__name__,
+                **(context or {})
+            }
+        }
+    )
+    return response.json()
+
+# 使用示例
+try:
+    # 一些可能失败的操作
+    process_data()
+except Exception as e:
+    notify_error('数据处理失败', e, {'file': 'data.csv'})</code></pre>
+
+    <h4>指定频道发送</h4>
+    <pre><code>import requests
+
+# 发送到特定频道（不使用自动路由）
+response = requests.post(
+    'http://localhost:3000/api/notify',
+    json={
+        'event': 'system',
+        'severity': 'info',
+        'title': '系统维护通知',
+        'message': '系统将于今晚 22:00 进行维护',
+        'channels': ['discord-ops', 'telegram-admin']  # 指定多个频道
+    }
+)</code></pre>
+
+    <h3>Webhook 集成示例</h3>
+    
+    <h4>从外部系统调用</h4>
+    <pre><code># 使用 curl 发送通知
+curl -X POST http://localhost:3000/api/notify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": "error",
+    "severity": "critical",
+    "title": "API 错误告警",
+    "message": "OpenAI API 返回 429 错误，请求被限流",
+    "metadata": {
+      "api": "openai",
+      "error_code": 429,
+      "retry_after": 60
+    }
+  }'</code></pre>
+
+    <h4>GitHub Actions 集成</h4>
+    <pre><code>{{ githubActionsYaml }}</code></pre>
+
+    <h3>多频道配置示例</h3>
+    
+    <h4>配置文件结构</h4>
+    <pre><code>// ~/.hermes/notification_channels.json
+{
+  "channels": {
+    "discord-main": {
+      "type": "discord",
+      "name": "Discord 主频道",
+      "description": "团队主要通知频道",
+      "webhookUrl": "https://discord.com/api/webhooks/xxx/yyy",
+      "events": ["task_complete", "system"],
+      "enabled": true,
+      "status": "healthy"
+    },
+    "discord-alerts": {
+      "type": "discord",
+      "name": "Discord 告警频道",
+      "description": "错误和告警专用",
+      "webhookUrl": "https://discord.com/api/webhooks/xxx/zzz",
+      "events": ["error", "warning"],
+      "enabled": true,
+      "status": "healthy"
+    },
+    "telegram-admin": {
+      "type": "telegram",
+      "name": "管理员 Telegram",
+      "description": "紧急通知管理员",
+      "channelId": "-1001234567890",
+      "events": ["critical"],
+      "enabled": true,
+      "status": "healthy"
+    }
+  },
+  "defaultChannel": "discord-main",
+  "eventRouting": {
+    "task_complete": "discord-main",
+    "task_failed": "discord-alerts",
+    "error": "discord-alerts",
+    "warning": "discord-alerts",
+    "system": "discord-main"
+  },
+  "severityOverrides": {
+    "critical": "telegram-admin"
+  }
+}</code></pre>
+
+    <h4>通过 API 创建频道</h4>
+    <pre><code>import requests
+
+# 创建 Discord 频道
+response = requests.post(
+    'http://localhost:3000/api/notification-channels',
+    json={
+        'id': 'discord-ops',
+        'type': 'discord',
+        'name': '运维频道',
+        'description': '运维团队专用频道',
+        'webhookUrl': 'https://discord.com/api/webhooks/xxx/yyy',
+        'events': ['gateway', 'error', 'warning'],
+        'enabled': True
+    }
+)
+
+# 设置为默认频道
+requests.put(
+    'http://localhost:3000/api/notification-channels',
+    json={
+        'id': 'discord-ops',
+        'isDefault': True
+    }
+)</code></pre>
+
+    <h3>事件路由说明</h3>
+    
+    <p>通知路由按以下优先级确定目标频道：</p>
+    
+    <ol>
+      <li><strong>指定频道</strong>：如果请求中指定了 <code>channels</code>，直接使用</li>
+      <li><strong>严重性覆盖</strong>：检查 <code>severityOverrides[severity]</code></li>
+      <li><strong>事件路由</strong>：检查 <code>eventRouting[event]</code></li>
+      <li><strong>默认频道</strong>：使用 <code>defaultChannel</code></li>
+    </ol>
+
+    <pre><code># 示例：critical 级别通知会路由到 telegram-admin
+# 即使事件类型在 eventRouting 中映射到其他频道
+
+# 请求
+{
+  "event": "task_complete",  # eventRouting: discord-main
+  "severity": "critical",    # severityOverrides: telegram-admin
+  "title": "紧急任务完成",
+  "message": "..."
+}
+
+# 实际发送到: telegram-admin (严重性覆盖优先)</code></pre>
   </div>
 </template>
 
@@ -578,6 +956,36 @@ definePageMeta({
 useHead({
   title: '通知设置 - Hermes Show 文档'
 })
+
+// GitHub Actions YAML example - stored as string to avoid Vue parsing ${{ }} syntax
+const githubActionsYaml = `# .github/workflows/notify.yml
+name: Notify on Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      status:
+        description: 'Deploy status'
+        required: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send notification
+        run: |
+          curl -X POST \${{ secrets.HERMES_NOTIFY_URL }} \\
+            -H "Content-Type: application/json" \\
+            -d '{
+              "event": "deploy",
+              "severity": "\${{ inputs.status == 'success' && 'info' || 'error' }}",
+              "title": "部署\${{ inputs.status == 'success' && '成功' || '失败' }}",
+              "message": "分支: \${{ github.ref_name }}",
+              "metadata": {
+                "branch": "\${{ github.ref_name }}",
+                "commit": "\${{ github.sha }}"
+              }
+            }'`
 </script>
 
 <style scoped>

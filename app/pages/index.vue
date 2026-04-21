@@ -7,7 +7,7 @@
         <span class="text-sm font-medium">已成功接入本地 Hermes Agent</span>
       </div>
       <button @click="refresh" class="text-xs hover:underline flex items-center gap-1">
-        <RefreshCw size="14" :class="{ 'animate-spin': isRefreshing }" />
+        <RefreshCw :size="14" :class="{ 'animate-spin': isRefreshing }" />
         刷新
       </button>
     </div>
@@ -23,7 +23,7 @@
         <div class="flex items-center justify-between mb-3">
           <span class="text-xs font-medium text-muted-foreground">{{ stat.title }}</span>
           <div class="p-1.5 rounded-lg" :class="stat.iconBg">
-            <component :is="stat.icon" size="16" :class="stat.iconColor" />
+            <component :is="stat.icon" :size="16" :class="stat.iconColor" />
           </div>
         </div>
         <div>
@@ -50,7 +50,7 @@
         <div class="h-72 w-full flex items-center justify-center border border-card-border rounded-xl bg-card/30 p-4">
           <Line v-if="chartData && chartData.labels && chartData.labels.length > 0" :data="chartData" :options="chartOptions" />
           <div v-else class="flex flex-col items-center text-muted-foreground">
-            <BarChart2 size="48" class="mb-4 opacity-50" />
+            <BarChart2 :size="48" class="mb-4 opacity-50" />
             <p>暂无图表数据</p>
           </div>
         </div>
@@ -88,13 +88,13 @@
           </NuxtLink>
           
           <div v-if="activeTasks.length === 0" class="text-center text-muted-foreground py-8">
-            <CheckCircle size="32" class="mx-auto mb-2 opacity-50" />
+            <CheckCircle :size="32" class="mx-auto mb-2 opacity-50" />
             <p class="text-sm">没有活跃任务</p>
           </div>
         </div>
         
         <NuxtLink to="/history" class="mt-4 w-full py-2 border border-dashed border-card-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-2">
-          <List size="16" />
+          <List :size="16" />
           <span>查看全部历史</span>
         </NuxtLink>
       </div>
@@ -123,7 +123,7 @@
               @click="navigateTo(`/history?id=${session.id}`)">
               <td class="py-3 px-4">
                 <div class="flex items-center gap-2">
-                  <MessageSquare size="16" class="text-muted-foreground" />
+                  <MessageSquare :size="16" class="text-muted-foreground" />
                   <span class="truncate max-w-[200px]">{{ session.title }}</span>
                 </div>
               </td>

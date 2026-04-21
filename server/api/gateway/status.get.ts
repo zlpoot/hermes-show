@@ -65,9 +65,9 @@ export default defineEventHandler(async (event) => {
         const dmPolicy = configContent.match(/WEIXIN_DM_POLICY:\s*(\w+)/)
         
         result.config = {
-          gateway_timeout: gatewayTimeout ? parseInt(gatewayTimeout[1]) : null,
-          allow_all_users: allowAllUsers ? allowAllUsers[1] === 'true' : false,
-          weixin_dm_policy: dmPolicy ? dmPolicy[1] : 'unknown'
+          gateway_timeout: gatewayTimeout && gatewayTimeout[1] ? parseInt(gatewayTimeout[1]) : null,
+          allow_all_users: allowAllUsers && allowAllUsers[1] ? allowAllUsers[1] === 'true' : false,
+          weixin_dm_policy: dmPolicy && dmPolicy[1] ? dmPolicy[1] : 'unknown'
         }
       } catch(e) {}
     }
