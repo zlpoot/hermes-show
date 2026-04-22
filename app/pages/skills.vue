@@ -168,31 +168,32 @@
         
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-6">
-          <!-- Chinese Description (优先显示) -->
-          <div v-if="activeTab === 'readme' && skillDetail.chineseDescription" class="mb-6">
-            <div class="p-4 rounded-xl bg-primary/5 border border-primary/20">
-              <h4 class="text-sm font-medium text-primary mb-2 flex items-center gap-2">
-                <BookOpen :size="16" />
-                中文说明
-              </h4>
-              <pre class="whitespace-pre-wrap text-sm text-foreground">{{ skillDetail.chineseDescription }}</pre>
+          <!-- 内容 Tab -->
+          <div v-if="activeTab === 'content'" class="prose prose-invert max-w-none">
+            <pre class="whitespace-pre-wrap text-sm bg-muted/30 p-4 rounded-xl border border-card-border overflow-x-auto">{{ skillDetail.content || '暂无内容' }}</pre>
+          </div>
+          
+          <!-- 说明 Tab -->
+          <div v-else-if="activeTab === 'description'">
+            <div v-if="skillDetail.description" class="p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <pre class="whitespace-pre-wrap text-sm text-foreground">{{ skillDetail.description }}</pre>
+            </div>
+            <div v-else class="text-center text-muted-foreground py-8">
+              <BookOpen :size="32" class="mx-auto mb-2 opacity-50" />
+              <p class="text-sm">暂无中文说明</p>
+              <p class="text-xs mt-1">可创建 DESCRIPTION.zh-CN.md 文件添加说明</p>
             </div>
           </div>
           
-          <!-- README -->
-          <div v-if="activeTab === 'readme'" class="prose prose-invert max-w-none">
-            <pre class="whitespace-pre-wrap text-sm bg-muted/30 p-4 rounded-xl border border-card-border overflow-x-auto">{{ skillDetail.content || '暂无详细说明' }}</pre>
-          </div>
-          
-          <!-- References -->
-          <div v-else-if="activeTab === 'references'" class="space-y-2">
-            <div v-for="ref in skillDetail.references" :key="ref"
-              class="p-3 bg-muted/30 rounded-lg border border-card-border hover:border-primary/50 cursor-pointer transition-colors"
-              @click="viewReference(ref)">
-              <div class="flex items-center gap-2">
+          <!-- References Tab -->
+          <div v-else-if="activeTab === 'references'" class="space-y-4">
+            <div v-for="ref in skillDetail.references" :key="ref.filename"
+              class="bg-muted/30 rounded-lg border border-card-border overflow-hidden">
+              <div class="px-4 py-2 bg-muted/50 border-b border-card-border flex items-center gap-2">
                 <FileText :size="16" class="text-blue-400" />
-                <span class="text-sm">{{ ref }}</span>
+                <span class="text-sm font-medium">{{ ref.filename }}</span>
               </div>
+              <pre class="p-4 text-sm overflow-x-auto whitespace-pre-wrap">{{ ref.content }}</pre>
             </div>
             <div v-if="!skillDetail.references?.length" class="text-center text-muted-foreground py-8">
               <FileText :size="32" class="mx-auto mb-2 opacity-50" />
@@ -200,7 +201,7 @@
             </div>
           </div>
           
-          <!-- Scripts -->
+          <!-- Scripts Tab -->
           <div v-else-if="activeTab === 'scripts'" class="space-y-2">
             <div v-for="script in skillDetail.scripts" :key="script"
               class="p-3 bg-muted/30 rounded-lg border border-card-border hover:border-primary/50 cursor-pointer transition-colors"
@@ -249,8 +250,8 @@ interface Skill {
 interface SkillDetail {
   skill: Skill
   content?: string
-  chineseDescription?: string
-  references?: string[]
+  description?: string
+  references?: { filename: string; content: string }[]
   scripts?: string[]
 }
 
@@ -316,9 +317,12 @@ const filteredSkills = computed(() => {
 })
 
 const availableTabs = computed(() => {
-  const tabs = [{ id: 'readme', label: '说明', icon: FileText }]
+  const tabs = [
+    { id: 'content', label: '内容', icon: FileText },
+    { id: 'description', label: '说明', icon: BookOpen }
+  ]
   if (skillDetail.value?.references?.length) {
-    tabs.push({ id: 'references', label: `参考文档 (${skillDetail.value.references.length})`, icon: BookOpen })
+    tabs.push({ id: 'references', label: `参考文档 (${skillDetail.value.references.length})`, icon: FileText })
   }
   if (skillDetail.value?.scripts?.length) {
     tabs.push({ id: 'scripts', label: `脚本 (${skillDetail.value.scripts.length})`, icon: TerminalSquare })
@@ -344,7 +348,7 @@ const selectCategory = (sourceKey: string, category: string) => {
 
 const selectSkill = async (skillId: string) => {
   selectedSkill.value = skillId
-  activeTab.value = 'readme'
+  activeTab.value = 'content'
   
   try {
     const detail = await $fetch<SkillDetailResponse>(`/api/skills?id=${skillId}`)
@@ -352,10 +356,6 @@ const selectSkill = async (skillId: string) => {
   } catch (e) {
     console.error('Failed to load skill detail:', e)
   }
-}
-
-const viewReference = async (filename: string) => {
-  console.log('View reference:', filename)
 }
 
 const viewScript = async (filename: string) => {

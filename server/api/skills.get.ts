@@ -187,11 +187,26 @@ export default defineEventHandler(async (event) => {
         content = content.replace(/^---\n[\s\S]*?\n---\n?/, '')
       } catch (e) {}
       
-      // List reference files
-      let references: string[] = []
+      // 读取中文说明文件 (DESCRIPTION.zh-CN.md)
+      let description = ''
+      const descPath = path.join(skill.path, 'DESCRIPTION.zh-CN.md')
+      if (fs.existsSync(descPath)) {
+        try {
+          description = fs.readFileSync(descPath, 'utf8')
+        } catch (e) {}
+      }
+      
+      // 读取参考文档内容
+      const references: { filename: string; content: string }[] = []
       const refPath = path.join(skill.path, 'references')
       if (fs.existsSync(refPath)) {
-        references = fs.readdirSync(refPath).filter(f => f.endsWith('.md'))
+        const refFiles = fs.readdirSync(refPath).filter(f => f.endsWith('.md'))
+        for (const file of refFiles) {
+          try {
+            const refContent = fs.readFileSync(path.join(refPath, file), 'utf8')
+            references.push({ filename: file, content: refContent })
+          } catch (e) {}
+        }
       }
       
       // List script files
@@ -201,17 +216,10 @@ export default defineEventHandler(async (event) => {
         scripts = fs.readdirSync(scriptPath).filter(f => f.endsWith('.py') || f.endsWith('.sh'))
       }
       
-      // 提取中文说明（查找 ## 中文说明 或 ## 简介 部分）
-      let chineseDescription = ''
-      const chineseMatch = content.match(/##\s*(?:中文说明|简介|中文简介)\s*\n([\s\S]*?)(?=\n##\s|$)/)
-      if (chineseMatch) {
-        chineseDescription = chineseMatch[1].trim()
-      }
-      
       return {
         skill,
         content,
-        chineseDescription,
+        description,
         references,
         scripts,
         stats: {
