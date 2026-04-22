@@ -12,41 +12,54 @@ export default defineEventHandler(async (event) => {
       
       const sessions: any[] = await prisma.$queryRawUnsafe(
         `SELECT 
-          id, source, started_at, ended_at, 
-          input_tokens, output_tokens, model,
-          billing_provider, billing_base_url
+          id, source_platform, started_at, ended_at, 
+          input_tokens, output_tokens
          FROM sessions 
          WHERE started_at > ? 
          ORDER BY started_at DESC`,
         sevenDaysAgo
       )
       
-      // Calculate provider performance using billing_provider
+      // If no sessions, return empty state (not mock data)
+      if (sessions.length === 0) {
+        return {
+          summary: {
+            totalCalls: 0,
+            successfulCalls: 0,
+            failedCalls: 0,
+            successRate: 100,
+            avgResponseTime: 0,
+            minResponseTime: 0,
+            maxResponseTime: 0,
+            callsLast24h: 0,
+            activeProviders: 0,
+            activeModels: 0
+          },
+          providers: [],
+          responseTimeDistribution: [],
+          successRateTrend: [],
+          errors: [],
+          isRealHermesConnected: true
+        }
+      }
+      
+      // Calculate provider performance using source_platform
       const providerStats = new Map<string, {
         calls: number
         successes: number
         failures: number
-        responseTimes: number[]
-        model: string
-        source: string
-        baseUrl: string
+        platform: string
       }>()
       
       for (const session of sessions) {
-        // Use billing_provider for actual API provider, source for platform
-        const provider = session.billing_provider || 'unknown'
-        const model = session.model || 'unknown'
-        const baseUrl = session.billing_base_url || ''
-        const key = `${provider}:${model}:${baseUrl}`
+        const platform = session.source_platform || 'unknown'
+        const key = platform
         
         const stats = providerStats.get(key) || {
           calls: 0,
           successes: 0,
           failures: 0,
-          responseTimes: [],
-          model,
-          source: session.source || 'unknown',
-          baseUrl
+          platform
         }
         
         stats.calls++
@@ -57,37 +70,22 @@ export default defineEventHandler(async (event) => {
           stats.failures++
         }
         
-        // Session duration is NOT API response time - it's the total session length
-        // For accurate API response time, we would need message-level timing data
-        // For now, we skip response time calculation from session duration
-        // as sessions can span hours (especially for messaging platforms)
-        
         providerStats.set(key, stats)
       }
       
       // Format provider data
       const providers = Array.from(providerStats.entries()).map(([key, stats]) => {
-        const [provider] = key.split(':')
-        const avgResponseTime = stats.responseTimes.length > 0
-          ? stats.responseTimes.reduce((a, b) => a + b, 0) / stats.responseTimes.length
-          : 0
-        
-        // Calculate P95
-        const sortedTimes = [...stats.responseTimes].sort((a, b) => a - b)
-        const p95Index = Math.floor(sortedTimes.length * 0.95)
-        const p95ResponseTime = sortedTimes[p95Index] || avgResponseTime
-        
         return {
-          provider,
-          model: stats.model,
-          source: stats.source,
-          baseUrl: stats.baseUrl,
+          provider: stats.platform,
+          model: '-',  // Model info not available in current schema
+          source: stats.platform,
+          baseUrl: '',
           calls: stats.calls,
           successes: stats.successes,
           failures: stats.failures,
           successRate: stats.calls > 0 ? (stats.successes / stats.calls) * 100 : 100,
-          avgResponseTime,
-          p95ResponseTime,
+          avgResponseTime: 0,  // Not available without message-level timing
+          p95ResponseTime: 0,
           recentCalls: []
         }
       }).sort((a, b) => b.calls - a.calls)
@@ -96,52 +94,22 @@ export default defineEventHandler(async (event) => {
       const totalCalls = providers.reduce((sum, p) => sum + p.calls, 0)
       const successfulCalls = providers.reduce((sum, p) => sum + p.successes, 0)
       const failedCalls = providers.reduce((sum, p) => sum + p.failures, 0)
-      const allResponseTimes = providers.flatMap(p => p.avgResponseTime > 0 ? [p.avgResponseTime] : [])
-      
-      // Get all response times for accurate stats
-      const allRawResponseTimes: number[] = [] // Would need message-level data
       
       const summary = {
         totalCalls,
         successfulCalls,
         failedCalls,
         successRate: totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 100,
-        avgResponseTime: allRawResponseTimes.length > 0 
-          ? allRawResponseTimes.reduce((a, b) => a + b, 0) / allRawResponseTimes.length 
-          : 0,
-        minResponseTime: allRawResponseTimes.length > 0 ? Math.min(...allRawResponseTimes) : 0,
-        maxResponseTime: allRawResponseTimes.length > 0 ? Math.max(...allRawResponseTimes) : 0,
+        avgResponseTime: 0,
+        minResponseTime: 0,
+        maxResponseTime: 0,
         callsLast24h: sessions.filter(s => Number(s.started_at) > Math.floor(Date.now() / 1000) - 24 * 60 * 60).length,
         activeProviders: new Set(providers.map(p => p.provider)).size,
         activeModels: providers.length
       }
       
-      // Response time distribution - would need message-level timing data
-      // For now, show placeholder based on typical API response times
-      const responseTimeBuckets = [
-        { label: '0-100ms', min: 0, max: 100, count: 0 },
-        { label: '100-500ms', min: 100, max: 500, count: 0 },
-        { label: '500ms-1s', min: 500, max: 1000, count: 0 },
-        { label: '1-2s', min: 1000, max: 2000, count: 0 },
-        { label: '2-5s', min: 2000, max: 5000, count: 0 },
-        { label: '5-10s', min: 5000, max: 10000, count: 0 },
-        { label: '>10s', min: 10000, max: Infinity, count: 0 }
-      ]
-      
-      // Estimate distribution based on provider types (rough approximation)
-      for (const p of providers) {
-        // Different providers have different typical response times
-        let estimatedBucket = 2 // Default 500ms-1s
-        if (p.provider === 'local' || p.provider === 'ollama') {
-          estimatedBucket = 3 // Local models often 1-2s
-        } else if (p.provider === 'openai' || p.provider === 'anthropic') {
-          estimatedBucket = 2 // Cloud APIs typically 500ms-1s
-        } else if (p.provider === 'custom') {
-          estimatedBucket = 3 // Custom providers often 1-2s
-        }
-        const bucket = responseTimeBuckets[estimatedBucket]
-        if (bucket) bucket.count += p.calls
-      }
+      // Response time distribution - not available without message-level timing
+      const responseTimeBuckets: { label: string; count: number }[] = []
       
       // Success rate trend by hour
       const successRateTrend = []
@@ -171,8 +139,8 @@ export default defineEventHandler(async (event) => {
         .slice(0, 10)
         .map(s => ({
           id: s.id,
-          provider: s.billing_provider || s.source || 'local',
-          model: s.model || 'unknown',
+          provider: s.source_platform || 'unknown',
+          model: '-',
           message: 'No output generated - possible API error or timeout',
           time: new Date(Number(s.started_at) * 1000).toLocaleString(),
           sessionId: s.id.slice(0, 12),
