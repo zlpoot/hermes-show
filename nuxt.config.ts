@@ -47,5 +47,8 @@ export default defineNuxtConfig({
     weixinAllowAllUsers: process.env.NUXT_WEIXIN_ALLOW_ALL_USERS || 'false',
     weixinDmPolicy: process.env.NUXT_WEIXIN_DM_POLICY || 'pairing',
     workDir: process.env.NUXT_WORK_DIR || '',
+    // Discord Bot 配置
+    discordBotToken: process.env.NUXT_DISCORD_BOT_TOKEN || '',
+    discordProxy: process.env.NUXT_DISCORD_PROXY || '',
   }
 })

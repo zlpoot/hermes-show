@@ -1,18 +1,19 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('健康检查页面', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/health')
-    await page.waitForLoadState('networkidle')
-  })
-  
   test('页面能正常加载', async ({ page }) => {
+    await page.goto('/health', { timeout: 60000 })
+    await page.waitForLoadState('networkidle')
+    
     const healthLink = page.getByRole('link', { name: '健康检查' })
     await expect(healthLink).toBeVisible()
   })
   
   test('系统状态显示', async ({ page }) => {
+    await page.goto('/health', { timeout: 60000 })
+    await page.waitForLoadState('networkidle')
     await page.waitForTimeout(500)
+    
     const content = page.locator('body')
     await expect(content).toBeVisible()
   })
@@ -24,7 +25,8 @@ test.describe('健康检查页面', () => {
       errors.push(error.message)
     })
     
-    // beforeEach 已经导航到 /health，无需重复导航
+    await page.goto('/health', { timeout: 60000 })
+    await page.waitForLoadState('networkidle')
     await page.waitForTimeout(1000)
     
     expect(errors).toHaveLength(0)

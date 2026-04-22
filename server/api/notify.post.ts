@@ -84,6 +84,40 @@ function routeEventToChannel(event: string, severity: string, config: Notificati
   return []
 }
 
+// Discord Bot Token 从运行时配置或 .env 文件获取
+async function getDiscordConfig() {
+  const config = useRuntimeConfig()
+  
+  // 优先从 runtimeConfig 获取
+  let botToken = config.discordBotToken || process.env.DISCORD_BOT_TOKEN || ''
+  let proxy = config.discordProxy || process.env.DISCORD_PROXY || ''
+  
+  // 如果没有配置，尝试从 .env 文件读取
+  if (!botToken || !proxy) {
+    try {
+      const fs = await import('node:fs')
+      const path = await import('node:path')
+      const envPath = path.join(process.cwd(), '.env')
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8')
+        for (const line of envContent.split('\n')) {
+          const trimmed = line.trim()
+          if (trimmed.startsWith('NUXT_DISCORD_BOT_TOKEN=')) {
+            botToken = trimmed.slice(23).replace(/^["']|["']$/g, '')
+          }
+          if (trimmed.startsWith('NUXT_DISCORD_PROXY=')) {
+            proxy = trimmed.slice(19).replace(/^["']|["']$/g, '')
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  
+  return { botToken, proxy }
+}
+
 // 发送Discord通知
 async function sendDiscordNotification(
   channel: NotificationChannel,
@@ -137,8 +171,65 @@ async function sendDiscordNotification(
       return { success: true }
     }
     
-    // 如果只有channelId，暂时返回错误（需要bot token支持）
-    return { success: false, error: 'Webhook URL required for Discord notifications' }
+    // 使用 Bot Token 发送到指定频道
+    const { botToken, proxy } = await getDiscordConfig()
+    if (channel.channelId && botToken) {
+      const discordApiUrl = `https://discord.com/api/v10/channels/${channel.channelId}/messages`
+      
+      // 使用 curl 命令发送（支持代理）
+      const args = ['-s', '-X', 'POST', '-m', '30']
+      if (proxy) {
+        args.push('-x', proxy)
+      }
+      args.push(
+        '-H', `Authorization: Bot ${botToken}`,
+        '-H', 'Content-Type: application/json',
+        '-d', JSON.stringify({ embeds: [embed] }),
+        discordApiUrl
+      )
+      
+      try {
+        const { spawn } = await import('node:child_process')
+        const result = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+          const proc = spawn('curl', args, { timeout: 35000 })
+          let stdout = ''
+          let stderr = ''
+          
+          proc.stdout.on('data', (data) => { stdout += data })
+          proc.stderr.on('data', (data) => { stderr += data })
+          
+          proc.on('close', (code) => {
+            if (code !== 0) {
+              resolve({ success: false, error: `curl exit ${code}: ${stderr || stdout}` })
+              return
+            }
+            
+            try {
+              const response = JSON.parse(stdout || '{}')
+              if (response.id) {
+                resolve({ success: true })
+              } else if (response.message) {
+                resolve({ success: false, error: `Discord API: ${response.message}` })
+              } else {
+                resolve({ success: true })
+              }
+            } catch (e: any) {
+              resolve({ success: false, error: `JSON parse error: ${e.message}` })
+            }
+          })
+          
+          proc.on('error', (e) => {
+            resolve({ success: false, error: e.message })
+          })
+        })
+        
+        return result
+      } catch (e: any) {
+        return { success: false, error: e.message || 'Unknown error' }
+      }
+    }
+    
+    return { success: false, error: 'No valid Discord configuration' }
   } catch (e: any) {
     return { success: false, error: e.message || 'Unknown error' }
   }
