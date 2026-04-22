@@ -28,7 +28,7 @@
           <span class="text-xs text-muted-foreground">今日通知</span>
           <Bell :size="16" class="text-primary" />
         </div>
-        <h3 class="text-2xl font-bold font-mono">{{ stats.todayCount }}</h3>
+        <h3 class="text-2xl font-bold font-mono">{{ stats.todaySent }}<span class="text-base text-muted-foreground">/{{ stats.todayCount }}</span></h3>
         <p class="text-xs mt-1" :class="stats.yesterdayChange >= 0 ? 'text-emerald-400' : 'text-red-400'">
           较昨日 {{ stats.yesterdayChange >= 0 ? '+' : '' }}{{ stats.yesterdayChange }}%
         </p>
@@ -36,20 +36,20 @@
       
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-muted-foreground">错误告警</span>
+          <span class="text-xs text-muted-foreground">失败通知</span>
           <AlertTriangle :size="16" class="text-red-400" />
         </div>
-        <h3 class="text-2xl font-bold font-mono text-red-400">{{ stats.errorAlerts }}</h3>
-        <p class="text-xs text-muted-foreground mt-1">未处理</p>
+        <h3 class="text-2xl font-bold font-mono" :class="stats.todayFailed > 0 ? 'text-red-400' : ''">{{ stats.todayFailed }}</h3>
+        <p class="text-xs text-muted-foreground mt-1">今日失败</p>
       </div>
       
       <div class="glass-panel p-4">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-muted-foreground">活跃规则</span>
+          <span class="text-xs text-muted-foreground">路由规则</span>
           <Settings2 :size="16" class="text-blue-400" />
         </div>
-        <h3 class="text-2xl font-bold font-mono">{{ stats.activeRules }}</h3>
-        <p class="text-xs text-muted-foreground mt-1">共 {{ stats.totalRules }} 条</p>
+        <h3 class="text-2xl font-bold font-mono">{{ stats.activeRules }}<span class="text-base text-muted-foreground">/{{ stats.totalRules }}</span></h3>
+        <p class="text-xs text-muted-foreground mt-1">已启用/总数</p>
       </div>
       
       <div class="glass-panel p-4">
@@ -57,17 +57,17 @@
           <span class="text-xs text-muted-foreground">通知渠道</span>
           <Send :size="16" class="text-emerald-400" />
         </div>
-        <h3 class="text-2xl font-bold font-mono">{{ stats.activeChannels }}</h3>
-        <p class="text-xs text-muted-foreground mt-1">已启用</p>
+        <h3 class="text-2xl font-bold font-mono">{{ stats.activeChannels }}<span class="text-base text-muted-foreground">/{{ stats.totalChannels }}</span></h3>
+        <p class="text-xs text-muted-foreground mt-1">健康/总数</p>
       </div>
     </div>
 
-    <!-- Main Content Area - 改为垂直堆叠 -->
+    <!-- Main Content Area -->
     <div class="flex-1 min-h-0 flex gap-4">
-      <!-- Left: Channels & Rules 垂直排列 -->
+      <!-- Left: Channels & Rules -->
       <div class="flex-1 min-h-0 flex flex-col gap-4">
         <!-- Notification Channels -->
-        <div class="glass-panel p-4 min-h-[200px] flex flex-col" style="flex: 1 1 45%;">
+        <div class="glass-panel p-4 min-h-[180px] flex flex-col" style="flex: 1 1 40%;">
           <div class="flex items-center justify-between mb-3 shrink-0">
             <h3 class="font-semibold flex items-center gap-2">
               <Radio :size="16" class="text-primary" />
@@ -87,7 +87,6 @@
                   <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-lg bg-card flex items-center justify-center border border-card-border relative">
                       <component :is="getChannelIcon(channel.type)" :size="18" :class="channel.enabled ? 'text-primary' : 'text-muted-foreground'" />
-                      <!-- Health Status Indicator -->
                       <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-card"
                            :class="getStatusBgClass(channel.status)"
                            :title="getStatusTitle(channel.status)"></div>
@@ -98,16 +97,14 @@
                         <span v-if="channel.isDefault" class="px-1.5 py-0.5 rounded text-xs bg-primary/20 text-primary">默认</span>
                       </div>
                       <p class="text-xs text-muted-foreground">{{ channel.description || channel.type }}</p>
-                      <!-- Error Message -->
-                      <p v-if="channel.status === 'error' && channel.errorMessage" 
-                         class="text-xs text-red-400 mt-0.5 truncate max-w-[200px]">
-                        {{ channel.errorMessage }}
-                      </p>
                     </div>
                   </div>
                   
                   <div class="flex items-center gap-1.5">
-                    <span class="text-xs text-muted-foreground mr-1">{{ channel.todaySent || 0 }}条</span>
+                    <span class="text-xs text-muted-foreground mr-1">
+                      <span class="text-emerald-400">{{ channel.todaySent || 0 }}</span>
+                      <span v-if="channel.todayFailed > 0" class="text-red-400">/{{ channel.todayFailed }}</span>
+                    </span>
                     <label class="flex items-center cursor-pointer">
                       <div class="relative">
                         <input type="checkbox" v-model="channel.enabled" @change="toggleChannel(channel)" class="sr-only" />
@@ -137,58 +134,67 @@
           </div>
         </div>
 
-        <!-- Notification Rules -->
-        <div class="glass-panel p-4 min-h-[200px] flex flex-col" style="flex: 1 1 55%;">
+        <!-- Notification Rules - 改为表格形式 -->
+        <div class="glass-panel p-4 min-h-[200px] flex flex-col" style="flex: 1 1 60%;">
           <div class="flex items-center justify-between mb-3 shrink-0">
             <h3 class="font-semibold flex items-center gap-2">
               <BellRing :size="16" class="text-primary" />
-              通知规则
-              <span class="text-xs text-muted-foreground font-normal">({{ rules.length }})</span>
+              路由规则
+              <span class="text-xs text-muted-foreground font-normal">(事件 → 频道)</span>
             </h3>
           </div>
           
           <div class="flex-1 min-h-0 overflow-y-auto">
-            <div class="space-y-2">
-              <div v-for="rule in rules" :key="rule.id" 
-                   class="p-3 bg-muted/30 rounded-xl border border-card-border hover:border-primary/30 transition-colors">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg flex items-center justify-center border border-card-border"
-                         :class="getEventBgColor(rule.eventType)">
-                      <component :is="getEventIcon(rule.eventType)" :size="14" :class="getEventColor(rule.eventType)" />
-                    </div>
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <p class="font-medium text-sm">{{ rule.name }}</p>
-                        <span class="px-1.5 py-0.5 rounded text-xs" 
-                              :class="getSeverityClass(rule.severity)">
-                          {{ getSeverityLabel(rule.severity) }}
-                        </span>
+            <table class="w-full text-sm">
+              <thead class="text-xs text-muted-foreground border-b border-card-border">
+                <tr>
+                  <th class="text-left py-2 px-2">目标频道</th>
+                  <th class="text-left py-2 px-2">订阅事件</th>
+                  <th class="text-center py-2 px-2">今日发送</th>
+                  <th class="text-center py-2 px-2">状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="rule in rules" :key="rule.id" 
+                    class="border-b border-card-border/50 hover:bg-muted/20 transition-colors">
+                  <td class="py-2.5 px-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-6 h-6 rounded flex items-center justify-center border border-card-border"
+                           :class="getChannelBgClass(rule.channelType)">
+                        <component :is="getChannelIcon(rule.channelType)" :size="12" :class="getChannelColor(rule.channelType)" />
                       </div>
-                      <p class="text-xs text-muted-foreground">{{ rule.description }}</p>
+                      <span class="font-medium">{{ rule.name }}</span>
                     </div>
-                  </div>
-                  
-                  <div class="flex items-center gap-2">
-                    <div class="flex items-center gap-1 text-xs text-muted-foreground">
-                      <component :is="getChannelIcon(rule.channelType)" :size="12" />
-                      <span>{{ rule.channelName }}</span>
+                  </td>
+                  <td class="py-2.5 px-2">
+                    <div class="flex flex-wrap gap-1">
+                      <span v-for="event in rule.events.slice(0, 4)" :key="event"
+                            class="px-1.5 py-0.5 rounded text-xs border"
+                            :class="getEventTagClass(event)">
+                        {{ getEventShortName(event) }}
+                      </span>
+                      <span v-if="rule.events.length > 4" class="px-1.5 py-0.5 rounded text-xs bg-muted/50 text-muted-foreground">
+                        +{{ rule.events.length - 4 }}
+                      </span>
                     </div>
-                    <label class="flex items-center cursor-pointer">
-                      <div class="relative">
-                        <input type="checkbox" v-model="rule.enabled" @change="toggleRule(rule)" class="sr-only" />
-                        <div class="w-8 h-4 bg-muted rounded-full transition-colors" :class="{ 'bg-primary': rule.enabled }"></div>
-                        <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform" :class="{ 'translate-x-4': rule.enabled }"></div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </td>
+                  <td class="py-2.5 px-2 text-center">
+                    <span class="font-mono text-emerald-400">{{ getChannelSentCount(rule.channel) }}</span>
+                    <span v-if="getChannelFailedCount(rule.channel) > 0" class="font-mono text-red-400">/{{ getChannelFailedCount(rule.channel) }}</span>
+                  </td>
+                  <td class="py-2.5 px-2 text-center">
+                    <span class="px-2 py-0.5 rounded text-xs"
+                          :class="rule.enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-muted/50 text-muted-foreground'">
+                      {{ rule.enabled ? '启用' : '禁用' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
             
             <div v-if="rules.length === 0" class="text-center py-8 text-muted-foreground">
               <BellRing :size="32" class="mx-auto mb-2 opacity-50" />
-              <p class="text-sm">暂无通知规则</p>
+              <p class="text-sm">暂无路由规则</p>
               <p class="text-xs mt-1">添加渠道后会自动生成规则</p>
             </div>
           </div>
@@ -205,7 +211,7 @@
           </h3>
           
           <div class="flex-1 min-h-0 overflow-y-auto space-y-2">
-            <div v-for="eventType in eventTypes" :key="eventType.id" 
+            <div v-for="eventType in eventTypesWithStats" :key="eventType.id" 
                  class="p-2.5 bg-muted/30 rounded-lg border border-card-border">
               <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-2">
@@ -215,24 +221,15 @@
                   </div>
                   <span class="text-sm font-medium">{{ eventType.name }}</span>
                 </div>
-                <label class="flex items-center cursor-pointer">
-                  <div class="relative">
-                    <input type="checkbox" v-model="eventType.enabled" @change="toggleEventType(eventType)" class="sr-only" />
-                    <div class="w-7 h-3.5 bg-muted rounded-full transition-colors" :class="{ 'bg-primary': eventType.enabled }"></div>
-                    <div class="absolute left-0.5 top-0.5 w-2.5 h-2.5 bg-white rounded-full transition-transform" :class="{ 'translate-x-3.5': eventType.enabled }"></div>
-                  </div>
-                </label>
+                <span class="text-xs font-mono text-muted-foreground">{{ eventType.triggerCount }}</span>
               </div>
               <p class="text-xs text-muted-foreground pl-8">{{ eventType.description }}</p>
-              <div class="mt-1 text-xs text-muted-foreground pl-8">
-                触发: <span class="font-mono">{{ eventType.triggerCount }}</span> 次
-              </div>
             </div>
           </div>
         </div>
 
-        <!-- Notification History with Filters -->
-        <div class="glass-panel p-4 h-64 shrink-0 flex flex-col">
+        <!-- Notification History -->
+        <div class="glass-panel p-4 h-72 shrink-0 flex flex-col">
           <div class="flex items-center justify-between mb-3 shrink-0">
             <h3 class="font-semibold flex items-center gap-2">
               <History :size="16" class="text-primary" />
@@ -242,10 +239,6 @@
               <select v-model="historyFilter.channel" class="text-xs bg-background border border-card-border rounded px-2 py-1">
                 <option value="">全部渠道</option>
                 <option v-for="ch in channels" :key="ch.id" :value="ch.id">{{ ch.name }}</option>
-              </select>
-              <select v-model="historyFilter.eventType" class="text-xs bg-background border border-card-border rounded px-2 py-1">
-                <option value="">全部类型</option>
-                <option v-for="et in eventTypes" :key="et.id" :value="et.id">{{ et.name }}</option>
               </select>
             </div>
           </div>
@@ -271,6 +264,7 @@
                     </span>
                     <span class="text-xs text-muted-foreground">{{ notif.channelName }}</span>
                   </div>
+                  <p v-if="notif.error" class="text-xs text-red-400 mt-0.5 truncate">{{ notif.error }}</p>
                 </div>
               </div>
             </div>
@@ -322,9 +316,10 @@
           <!-- Discord Webhook -->
           <template v-if="channelForm.type === 'discord'">
             <div>
-              <label class="text-xs text-muted-foreground block mb-2">Webhook URL <span class="text-red-400">*</span></label>
-              <input type="text" v-model="channelForm.webhookUrl" placeholder="https://discord.com/api/webhooks/..."
+              <label class="text-xs text-muted-foreground block mb-2">Channel ID <span class="text-red-400">*</span></label>
+              <input type="text" v-model="channelForm.channelId" placeholder="例如: 123456789012345678"
                      class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+              <p class="text-xs text-muted-foreground mt-1">Discord 频道 ID，使用 Bot Token 发送</p>
             </div>
           </template>
           
@@ -412,11 +407,15 @@ import {
 // API data
 const stats = ref({
   todayCount: 0,
+  todaySent: 0,
+  todayFailed: 0,
+  yesterdayCount: 0,
   yesterdayChange: 0,
   errorAlerts: 0,
   activeRules: 0,
   totalRules: 0,
-  activeChannels: 0
+  activeChannels: 0,
+  totalChannels: 0
 })
 
 const channels = ref<any[]>([])
@@ -465,6 +464,11 @@ const filteredNotifications = computed(() => {
   }
   
   return result
+})
+
+// 事件类型带统计
+const eventTypesWithStats = computed(() => {
+  return eventTypes.value.filter(et => et.triggerCount > 0 || ['error', 'critical', 'task_complete', 'system', 'cron', 'budget'].includes(et.id))
 })
 
 // Methods
@@ -522,6 +526,26 @@ const getChannelIcon = (type: string) => {
     'weixin': MessageCircle
   }
   return icons[type] || Bell
+}
+
+const getChannelColor = (type: string) => {
+  const colors: Record<string, string> = {
+    'discord': 'text-indigo-400',
+    'telegram': 'text-blue-400',
+    'weixin': 'text-green-400',
+    'wechat': 'text-green-400'
+  }
+  return colors[type] || 'text-muted-foreground'
+}
+
+const getChannelBgClass = (type: string) => {
+  const classes: Record<string, string> = {
+    'discord': 'bg-indigo-500/10',
+    'telegram': 'bg-blue-500/10',
+    'weixin': 'bg-green-500/10',
+    'wechat': 'bg-green-500/10'
+  }
+  return classes[type] || 'bg-muted/30'
 }
 
 const getEventIcon = (type: string) => {
@@ -593,24 +617,61 @@ const getEventBgColor = (type: string) => {
   return colors[type] || 'bg-muted/30'
 }
 
-const getSeverityClass = (severity: string) => {
-  const classes: Record<string, string> = {
-    'critical': 'bg-red-500/20 text-red-400',
-    'error': 'bg-red-500/20 text-red-400',
-    'warning': 'bg-amber-500/20 text-amber-400',
-    'info': 'bg-blue-500/20 text-blue-400'
-  }
-  return classes[severity] || 'bg-muted/30 text-muted-foreground'
-}
-
-const getSeverityLabel = (severity: string) => {
-  const labels: Record<string, string> = {
-    'critical': '紧急',
+const getEventShortName = (type: string) => {
+  const names: Record<string, string> = {
     'error': '错误',
     'warning': '警告',
-    'info': '信息'
+    'critical': '严重',
+    'task_complete': '完成',
+    'task_start': '开始',
+    'task_failed': '失败',
+    'system': '系统',
+    'gateway': '网关',
+    'cron': '定时',
+    'connection': '连接',
+    'config_change': '配置',
+    'auth': '授权',
+    'budget': '预算',
+    'backup': '备份',
+    'info': '信息',
+    'test': '测试',
+    'daily': '日常'
   }
-  return labels[severity] || severity
+  return names[type] || type
+}
+
+const getEventTagClass = (type: string) => {
+  const classes: Record<string, string> = {
+    'error': 'bg-red-500/10 border-red-500/30 text-red-400',
+    'warning': 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+    'critical': 'bg-red-500/10 border-red-500/30 text-red-400',
+    'task_complete': 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
+    'task_start': 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+    'task_failed': 'bg-red-500/10 border-red-500/30 text-red-400',
+    'system': 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+    'gateway': 'bg-purple-500/10 border-purple-500/30 text-purple-400',
+    'cron': 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400',
+    'connection': 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400',
+    'config_change': 'bg-orange-500/10 border-orange-500/30 text-orange-400',
+    'auth': 'bg-pink-500/10 border-pink-500/30 text-pink-400',
+    'budget': 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400',
+    'backup': 'bg-teal-500/10 border-teal-500/30 text-teal-400',
+    'info': 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+    'test': 'bg-green-500/10 border-green-500/30 text-green-400',
+    'daily': 'bg-gray-500/10 border-gray-500/30 text-gray-400'
+  }
+  return classes[type] || 'bg-muted/30 border-card-border text-muted-foreground'
+}
+
+// 获取渠道发送统计
+const getChannelSentCount = (channelId: string) => {
+  const channel = channels.value.find(c => c.id === channelId)
+  return channel?.todaySent || 0
+}
+
+const getChannelFailedCount = (channelId: string) => {
+  const channel = channels.value.find(c => c.id === channelId)
+  return channel?.todayFailed || 0
 }
 
 const toggleChannel = async (channel: any) => {
@@ -627,14 +688,6 @@ const toggleChannel = async (channel: any) => {
     showToast('error', '更新失败')
     channel.enabled = !channel.enabled // revert
   }
-}
-
-const toggleRule = (rule: any) => {
-  showToast('success', rule.enabled ? '规则已启用' : '规则已禁用')
-}
-
-const toggleEventType = (eventType: any) => {
-  showToast('success', eventType.enabled ? '事件类型已启用' : '事件类型已禁用')
 }
 
 const openChannelModal = (channel?: any) => {
@@ -692,6 +745,7 @@ const saveChannel = async () => {
     // Add type-specific config
     if (channelForm.type === 'discord') {
       body.webhookUrl = channelForm.webhookUrl
+      body.channelId = channelForm.channelId
     } else if (channelForm.type === 'telegram') {
       body.botToken = channelForm.botToken
       body.chatId = channelForm.chatId
@@ -700,14 +754,12 @@ const saveChannel = async () => {
     }
     
     if (editingChannel.value) {
-      // Update existing
       await $fetch('/api/notification-channels', {
         method: 'PUT',
         body
       })
       showToast('success', '渠道已更新')
     } else {
-      // Create new
       await $fetch('/api/notification-channels', {
         method: 'POST',
         body
@@ -757,6 +809,8 @@ const testChannel = async (channel: any) => {
     
     if (result.success) {
       showToast('success', `测试消息已发送到 ${channel.name}`)
+      // 刷新以更新状态
+      await fetchData()
     } else {
       showToast('error', '发送失败: ' + ((result as any).results?.[0]?.error || '未知错误'))
     }
