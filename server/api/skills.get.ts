@@ -38,15 +38,29 @@ interface Skill {
   createdAt: number  // 文件创建时间戳
 }
 
-// 自学习技能的判断依据：4月15日之后的技能
-const LEARNED_SKILLS_THRESHOLD = new Date('2026-04-15T00:00:00Z').getTime()
-
-// 或者根据作者判断
-const LEARNED_AUTHORS = [
-  'HermesAgent',
-  'hermes-agent',
-  'Hermes Agent'
-]
+/**
+ * 加载内置技能清单
+ * .bundled_manifest 文件格式: "skill-id:hash" 每行一个
+ */
+function loadBundledManifest(skillsDir: string): Set<string> {
+  const manifestPath = path.join(skillsDir, '.bundled_manifest')
+  const bundledIds = new Set<string>()
+  
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const content = fs.readFileSync(manifestPath, 'utf-8')
+      const lines = content.split('\n').filter(Boolean)
+      for (const line of lines) {
+        const skillId = line.split(':')[0]
+        if (skillId) bundledIds.add(skillId)
+      }
+    } catch (e) {
+      console.error('Failed to load bundled manifest:', e)
+    }
+  }
+  
+  return bundledIds
+}
 
 function parseSkillMd(skillPath: string): SkillMeta | null {
   try {
@@ -64,6 +78,9 @@ function scanSkillsDir(skillsDir: string): Skill[] {
   const skills: Skill[] = []
   
   if (!fs.existsSync(skillsDir)) return skills
+  
+  // 加载内置技能清单
+  const bundledIds = loadBundledManifest(skillsDir)
   
   // Scan categories
   const categories = fs.readdirSync(skillsDir).filter(f => {
@@ -92,10 +109,8 @@ function scanSkillsDir(skillsDir: string): Skill[] {
         const hasScripts = fs.existsSync(path.join(skillPath, 'scripts'))
         const hasTemplates = fs.existsSync(path.join(skillPath, 'templates'))
         
-        // 判断技能来源
-        const author = meta?.author || 'Unknown'
-        const isLearned = createdAt > LEARNED_SKILLS_THRESHOLD || 
-                         LEARNED_AUTHORS.some(a => author.includes(a))
+        // 判断技能来源：在 bundled manifest 中的为内置技能，否则为自学习技能
+        const isBundled = bundledIds.has(skillDir)
         
         skills.push({
           id: `${category}/${skillDir}`,
@@ -103,7 +118,7 @@ function scanSkillsDir(skillsDir: string): Skill[] {
           description: meta?.description || 'No description',
           category: category,
           version: meta?.version || '1.0.0',
-          author: author,
+          author: meta?.author || 'Unknown',
           license: meta?.license || 'MIT',
           tags: meta?.metadata?.hermes?.tags || [],
           related_skills: meta?.metadata?.hermes?.related_skills || [],
@@ -111,7 +126,7 @@ function scanSkillsDir(skillsDir: string): Skill[] {
           hasReferences,
           hasScripts,
           hasTemplates,
-          source: isLearned ? 'learned' : 'bundled',
+          source: isBundled ? 'bundled' : 'learned',
           createdAt
         })
       }
