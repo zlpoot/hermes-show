@@ -30,17 +30,6 @@ jobs:
         
       - name: Run unit tests
         run: pnpm test:unit
-        
-      - name: Generate coverage report
-        run: pnpm test:coverage
-        
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   e2e-tests:
     name: E2E Tests
