@@ -8,18 +8,11 @@
             <div class="flex items-center justify-between">
               <h3 class="font-semibold flex items-center gap-2">
                 <History :size="18" class="text-primary" />
-                会话检索 (FTS5)
+                会话历史
               </h3>
             </div>
-            <div class="relative mt-4">
-              <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input 
-                type="text" 
-                placeholder="搜索历史对话..." 
-                class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
-            </div>
           </div>
-          <div class="flex-1 overflow-y-auto p-2 space-y-1">
+          <div class="flex-1 overflow-y-auto p-2">
             <div class="h-full flex items-center justify-center text-muted-foreground">
               <Loader2 :size="24" class="animate-spin" />
             </div>
@@ -27,10 +20,10 @@
         </template>
         
         <div class="p-4 border-b border-card-border">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold flex items-center gap-2">
               <History :size="18" class="text-primary" />
-              会话检索 (FTS5)
+              会话历史
             </h3>
             <div class="flex items-center gap-2">
               <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors" v-if="sessions.length > 0">
@@ -43,32 +36,64 @@
               </button>
             </div>
           </div>
-          <div class="relative mt-4">
+          
+          <!-- Search -->
+          <div class="relative mb-3">
             <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input 
               type="text" 
               v-model="searchQuery" 
               @input="debouncedSearch" 
-              placeholder="搜索历史对话..." 
+              placeholder="搜索对话内容..." 
               class="w-full bg-background border border-card-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors" />
             <Loader2 v-if="isSearching" :size="14" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
           </div>
           
-          <!-- Type Filter -->
-          <div class="mt-3 flex flex-wrap gap-2">
+          <!-- Type Filter Dropdown -->
+          <div class="relative">
             <button 
-              v-for="p in platforms" 
-              :key="p.id"
-              @click="toggleType(p.id)"
-              class="text-xs px-2 py-1 rounded-full border transition-all"
-              :class="selectedTypes.includes(p.id) 
-                ? 'bg-primary/20 border-primary text-primary' 
-                : 'bg-background border-card-border text-muted-foreground hover:border-primary/50'">
-              {{ p.name }} ({{ p.count }})
+              @click="showTypeDropdown = !showTypeDropdown"
+              class="w-full flex items-center justify-between px-3 py-2 bg-background border border-card-border rounded-lg text-sm hover:border-primary/50 transition-colors">
+              <span class="flex items-center gap-2">
+                <Filter :size="14" class="text-muted-foreground" />
+                <span class="text-muted-foreground">
+                  {{ selectedTypes.length === 0 ? '全部分类' : `已选 ${selectedTypes.length} 个分类` }}
+                </span>
+              </span>
+              <ChevronDown :size="16" class="text-muted-foreground transition-transform" :class="{ 'rotate-180': showTypeDropdown }" />
             </button>
+            
+            <!-- Dropdown -->
+            <div 
+              v-if="showTypeDropdown" 
+              class="absolute left-0 right-0 top-full mt-1 bg-card border border-card-border rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto">
+              <div class="p-2 border-b border-card-border flex justify-between">
+                <button @click="selectAllTypes" class="text-xs text-primary hover:underline">全选</button>
+                <button @click="clearAllTypes" class="text-xs text-muted-foreground hover:text-foreground">清除</button>
+              </div>
+              <div class="p-1">
+                <label 
+                  v-for="p in platforms" 
+                  :key="p.id"
+                  class="flex items-center justify-between px-3 py-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                  :class="{ 'bg-primary/10': selectedTypes.includes(p.id) }">
+                  <span class="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      :value="p.id" 
+                      :checked="selectedTypes.includes(p.id)"
+                      @change="toggleType(p.id)"
+                      class="w-4 h-4 rounded border-card-border text-primary focus:ring-primary cursor-pointer" />
+                    <span class="text-sm">{{ p.name }}</span>
+                  </span>
+                  <span class="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{{ p.count }}</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
         
+        <!-- Session List with Pagination -->
         <div class="flex-1 overflow-y-auto p-2 space-y-1">
           <div v-for="session in sessions" :key="session.id"
             class="w-full flex items-center text-left p-1 rounded-lg transition-colors border border-transparent hover:bg-muted/50 group cursor-pointer"
@@ -86,6 +111,48 @@
                 <span class="text-xs text-muted-foreground">{{ session.date }}</span>
                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-card-border/50 text-muted-foreground">{{ session.platformDisplay || session.platform }}</span>
               </div>
+            </div>
+          </div>
+          
+          <!-- Empty State -->
+          <div v-if="sessions.length === 0 && !isSearching" class="py-12 text-center text-muted-foreground">
+            <MessageSquare :size="32" class="mx-auto mb-3 opacity-30" />
+            <p class="text-sm">暂无会话记录</p>
+          </div>
+        </div>
+        
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="p-3 border-t border-card-border">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-muted-foreground">
+              {{ totalCount }} 条记录 · 第 {{ currentPage }} / {{ totalPages }} 页
+            </span>
+            <div class="flex items-center gap-1">
+              <button 
+                @click="goToPage(1)" 
+                :disabled="currentPage === 1"
+                class="p-1.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                <ChevronsLeft :size="14" />
+              </button>
+              <button 
+                @click="goToPage(currentPage - 1)" 
+                :disabled="currentPage === 1"
+                class="p-1.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                <ChevronLeft :size="14" />
+              </button>
+              <span class="px-3 py-1 text-sm font-mono">{{ currentPage }}</span>
+              <button 
+                @click="goToPage(currentPage + 1)" 
+                :disabled="currentPage === totalPages"
+                class="p-1.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                <ChevronRight :size="14" />
+              </button>
+              <button 
+                @click="goToPage(totalPages)" 
+                :disabled="currentPage === totalPages"
+                class="p-1.5 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                <ChevronsRight :size="14" />
+              </button>
             </div>
           </div>
         </div>
@@ -107,7 +174,7 @@
               </div>
             </div>
           </div>
-          <div class="flex-1 overflow-y-auto p-6 space-y-6">
+          <div class="flex-1 overflow-y-auto p-6">
             <div class="h-full flex flex-col items-center justify-center text-muted-foreground">
               <MessageSquare :size="48" class="mb-4 opacity-20" />
               <p>从左侧选择会话以查看详细信息</p>
@@ -178,7 +245,7 @@
               </div>
               <div class="pt-1">
                 <p class="text-sm text-muted-foreground mb-1 font-medium">User</p>
-                <div class="bg-muted/50 p-4 rounded-2xl rounded-tl-none border border-card-border text-sm leading-relaxed">
+                <div class="bg-muted/50 p-4 rounded-2xl rounded-tl-none border border-card-border text-sm leading-relaxed whitespace-pre-wrap">
                   {{ msg.content }}
                 </div>
               </div>
@@ -220,9 +287,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { History, Search, MessageSquare, Download, User, Bot, Wrench, TerminalSquare, Trash2, Loader2, FileJson, FileText } from 'lucide-vue-next'
+import { 
+  History, Search, MessageSquare, Download, User, Bot, Wrench, 
+  Trash2, Loader2, FileJson, FileText, Filter, ChevronDown, 
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight 
+} from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -267,20 +338,22 @@ function isSessionDetailResponse(data: HistoryApiResponse | null | undefined): d
 
 const searchQuery = ref('')
 const isSearching = ref(false)
+const showTypeDropdown = ref(false)
 
 // Pagination
 const pageSize = ref(20)
 const currentPage = ref(1)
 const totalCount = ref(0)
+const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value) || 1)
 
-// Type filter - default: exclude cron
+// Type filter
 const selectedTypes = ref<string[]>([])
 const platforms = ref<{ id: string; name: string; count: number }[]>([])
 
 // Fetch sessions with type filter and pagination
 const { data, refresh } = await useFetch<HistoryApiResponse>('/api/history', {
   query: computed(() => ({
-    types: selectedTypes.value.join(',') || undefined,
+    types: selectedTypes.value.length > 0 ? selectedTypes.value.join(',') : undefined,
     limit: pageSize.value,
     offset: (currentPage.value - 1) * pageSize.value
   }))
@@ -335,6 +408,26 @@ const toggleType = (typeId: string) => {
   }
   // Reset to first page when filter changes
   currentPage.value = 1
+}
+
+// Select all types
+const selectAllTypes = () => {
+  selectedTypes.value = platforms.value.map(p => p.id)
+  currentPage.value = 1
+}
+
+// Clear all types
+const clearAllTypes = () => {
+  selectedTypes.value = []
+  currentPage.value = 1
+}
+
+// Pagination navigation
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    selectedIds.value = [] // Clear selection on page change
+  }
 }
 
 // Filter messages by content and role
@@ -525,4 +618,14 @@ const currentSession = computed<Session | undefined>(() => {
 const messages = computed<{ role: string; content: string; tool_name?: string; timestamp?: number }[]>(() => 
   activeSessionDetail.value?.messages || []
 )
+
+// Close dropdown when clicking outside
+onMounted(() => {
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    if (!target.closest('.relative') || !target.closest('button')) {
+      showTypeDropdown.value = false
+    }
+  })
+})
 </script>
