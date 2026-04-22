@@ -1,8 +1,28 @@
 import { execSync } from 'node:child_process'
 import path from 'node:path'
+import fs from 'node:fs'
 import { getHermesPath } from './hermes'
 
 const DB_PATH = path.join(getHermesPath(), 'state.db')
+
+// 查找 sqlite3 可执行文件的路径
+function findSqlite3(): string {
+  const candidates = [
+    '/home/zlpoot/miniconda3/bin/sqlite3',
+    '/usr/bin/sqlite3',
+    '/usr/local/bin/sqlite3',
+    'sqlite3' // fallback to PATH
+  ]
+  
+  for (const candidate of candidates) {
+    if (candidate === 'sqlite3') return candidate
+    if (fs.existsSync(candidate)) return candidate
+  }
+  
+  return 'sqlite3'
+}
+
+const SQLITE3_PATH = findSqlite3()
 
 /**
  * 执行 SQL 查询并返回结果
@@ -22,7 +42,7 @@ function query<T = any>(sql: string, params: any[] = []): T[] {
   
   try {
     const result = execSync(
-      `sqlite3 "${DB_PATH}" -json "${fullSql.replace(/"/g, '\\"')}"`,
+      `"${SQLITE3_PATH}" "${DB_PATH}" -json "${fullSql.replace(/"/g, '\\"')}"`,
       { encoding: 'utf-8', timeout: 5000 }
     )
     return result.trim() ? JSON.parse(result) : []
