@@ -20,6 +20,7 @@
     "chart.js": "^4.5.1",
     "https-proxy-agent": "^9.0.0",
     "lucide-vue-next": "^1.0.0",
+    "marked": "^18.0.2",
     "nuxt": "^3.21.2",
     "undici": "^8.1.0",
     "vue": "^3.5.32",

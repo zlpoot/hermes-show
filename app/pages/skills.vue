@@ -156,27 +156,39 @@
         </div>
         
         <!-- Content Tabs -->
-        <div class="flex border-b border-card-border">
-          <button v-for="tab in availableTabs" :key="tab.id"
-            @click="activeTab = tab.id"
-            class="px-4 py-2 text-sm transition-colors"
-            :class="activeTab === tab.id ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'">
-            <component :is="tab.icon" :size="14" class="inline mr-1" />
-            {{ tab.label }}
+        <div class="flex border-b border-card-border items-center justify-between">
+          <div class="flex">
+            <button v-for="tab in availableTabs" :key="tab.id"
+              @click="activeTab = tab.id"
+              class="px-4 py-2 text-sm transition-colors"
+              :class="activeTab === tab.id ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'">
+              <component :is="tab.icon" :size="14" class="inline mr-1" />
+              {{ tab.label }}
+            </button>
+          </div>
+          <!-- Preview Toggle -->
+          <button @click="previewMode = !previewMode"
+            class="px-3 py-1.5 mr-3 text-xs rounded-full border transition-colors flex items-center gap-1.5"
+            :class="previewMode ? 'bg-primary/20 border-primary/50 text-primary' : 'bg-muted/30 border-card-border text-muted-foreground hover:text-foreground'">
+            <Eye v-if="previewMode" :size="12" />
+            <Code v-else :size="12" />
+            {{ previewMode ? '预览' : '源码' }}
           </button>
         </div>
         
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-6">
           <!-- 内容 Tab -->
-          <div v-if="activeTab === 'content'" class="prose prose-invert max-w-none">
-            <pre class="whitespace-pre-wrap text-sm bg-muted/30 p-4 rounded-xl border border-card-border overflow-x-auto">{{ skillDetail.content || '暂无内容' }}</pre>
+          <div v-if="activeTab === 'content'">
+            <div class="prose prose-invert max-w-none" v-if="previewMode" v-html="renderMarkdown(skillDetail.content || '暂无内容')"></div>
+            <pre v-else class="whitespace-pre-wrap text-sm bg-muted/30 p-4 rounded-xl border border-card-border overflow-x-auto">{{ skillDetail.content || '暂无内容' }}</pre>
           </div>
           
           <!-- 说明 Tab -->
           <div v-else-if="activeTab === 'description'">
             <div v-if="skillDetail.description" class="p-4 rounded-xl bg-primary/5 border border-primary/20">
-              <pre class="whitespace-pre-wrap text-sm text-foreground">{{ skillDetail.description }}</pre>
+              <div class="prose prose-invert max-w-none" v-if="previewMode" v-html="renderMarkdown(skillDetail.description)"></div>
+              <pre v-else class="whitespace-pre-wrap text-sm text-foreground">{{ skillDetail.description }}</pre>
             </div>
             <div v-else class="text-center text-muted-foreground py-8">
               <BookOpen :size="32" class="mx-auto mb-2 opacity-50" />
@@ -193,7 +205,8 @@
                 <FileText :size="16" class="text-blue-400" />
                 <span class="text-sm font-medium">{{ ref.filename }}</span>
               </div>
-              <pre class="p-4 text-sm overflow-x-auto whitespace-pre-wrap">{{ ref.content }}</pre>
+              <div class="prose prose-invert max-w-none p-4" v-if="previewMode" v-html="renderMarkdown(ref.content)"></div>
+              <pre v-else class="p-4 text-sm overflow-x-auto whitespace-pre-wrap">{{ ref.content }}</pre>
             </div>
             <div v-if="!skillDetail.references?.length" class="text-center text-muted-foreground py-8">
               <FileText :size="32" class="mx-auto mb-2 opacity-50" />
@@ -230,7 +243,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { BookOpen, Search, FileText, TerminalSquare, LayoutTemplate, Brain, Package, ChevronDown } from 'lucide-vue-next'
+import { marked } from 'marked'
+import { BookOpen, Search, FileText, TerminalSquare, LayoutTemplate, Brain, Package, ChevronDown, Eye, Code } from 'lucide-vue-next'
 
 interface Skill {
   id: string
@@ -294,6 +308,13 @@ const selectedCategory = ref<string | null>(null)
 const selectedSkill = ref<string | null>(null)
 const skillDetail = ref<SkillDetail | null>(null)
 const activeTab = ref('readme')
+const previewMode = ref(true) // 默认开启预览模式
+
+// Markdown 渲染函数
+const renderMarkdown = (text: string): string => {
+  if (!text) return ''
+  return marked.parse(text, { breaks: true, gfm: true }) as string
+}
 
 const filteredSkills = computed(() => {
   let result = skills.value
