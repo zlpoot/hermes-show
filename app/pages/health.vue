@@ -20,8 +20,8 @@
     </div>
 
     <!-- Health Checks -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div v-for="(check, key) in data?.healthChecks" :key="key" 
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div v-for="(check, key) in filteredHealthChecks" :key="key" 
            class="glass-panel p-4 border-l-4"
            :class="getCheckBorderClass(check.status)">
         <div class="flex items-center justify-between mb-2">
@@ -205,6 +205,13 @@ import {
 
 const { data, refresh: refreshData } = await useFetch('/api/health')
 const isRefreshing = ref(false)
+
+// Filter out gateway from health checks (shown separately below)
+const filteredHealthChecks = computed(() => {
+  if (!data.value?.healthChecks) return {}
+  const { gateway, ...rest } = data.value.healthChecks
+  return rest
+})
 
 const doRefresh = async () => {
   isRefreshing.value = true

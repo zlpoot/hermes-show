@@ -27,18 +27,6 @@
           </NuxtLink>
         </div>
       </nav>
-      
-      <div class="p-4 border-t border-card-border">
-        <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_5px_rgba(16,185,129,1)]"></div>
-            <span class="text-sm font-medium text-muted-foreground">Gateway 运行中</span>
-          </div>
-          <button class="text-muted-foreground hover:text-primary transition-colors">
-            <Settings :size="16" />
-          </button>
-        </div>
-      </div>
     </aside>
 
     <!-- Main Content -->
@@ -73,7 +61,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { LayoutDashboard, SlidersHorizontal, History, TerminalSquare, Bot, Settings, Cpu, User, BookOpen, Clock, Radio, ExternalLink, DollarSign, Activity, Gauge, Server, HardDrive, Bell, Box, Users, ListTodo } from 'lucide-vue-next'
+import { LayoutDashboard, SlidersHorizontal, History, TerminalSquare, Bot, Cpu, User, BookOpen, Clock, Radio, ExternalLink, DollarSign, Activity, Gauge, Server, HardDrive, Bell, Box, Users, ListTodo } from 'lucide-vue-next'
 
 const route = useRoute()
 
