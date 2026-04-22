@@ -50,7 +50,7 @@
           </div>
           
           <!-- Type Filter Dropdown -->
-          <div class="relative">
+          <div class="relative" ref="dropdownRef">
             <button 
               @click="showTypeDropdown = !showTypeDropdown"
               class="w-full flex items-center justify-between px-3 py-2 bg-background border border-card-border rounded-lg text-sm hover:border-primary/50 transition-colors">
@@ -68,26 +68,23 @@
               v-if="showTypeDropdown" 
               class="absolute left-0 right-0 top-full mt-1 bg-card border border-card-border rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto">
               <div class="p-2 border-b border-card-border flex justify-between">
-                <button @click="selectAllTypes" class="text-xs text-primary hover:underline">全选</button>
-                <button @click="clearAllTypes" class="text-xs text-muted-foreground hover:text-foreground">清除</button>
+                <button @click.prevent="selectAllTypes" class="text-xs text-primary hover:underline">全选</button>
+                <button @click.prevent="clearAllTypes" class="text-xs text-muted-foreground hover:text-foreground">清除</button>
               </div>
               <div class="p-1">
-                <label 
+                <div 
                   v-for="p in platforms" 
                   :key="p.id"
+                  @click="toggleType(p.id)"
                   class="flex items-center justify-between px-3 py-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
-                  :class="{ 'bg-primary/10': selectedTypes.includes(p.id) }">
+                  :class="selectedTypes.includes(p.id) ? 'bg-primary/10' : ''">
                   <span class="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      :value="p.id" 
-                      :checked="selectedTypes.includes(p.id)"
-                      @change="toggleType(p.id)"
-                      class="w-4 h-4 rounded border-card-border text-primary focus:ring-primary cursor-pointer" />
-                    <span class="text-sm">{{ p.name }}</span>
+                    <Check v-if="selectedTypes.includes(p.id)" :size="16" class="text-primary" />
+                    <div v-else class="w-4 h-4 rounded border border-card-border"></div>
+                    <span class="text-sm" :class="selectedTypes.includes(p.id) ? 'text-primary font-medium' : ''">{{ p.name }}</span>
                   </span>
                   <span class="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{{ p.count }}</span>
-                </label>
+                </div>
               </div>
             </div>
           </div>
@@ -292,7 +289,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { 
   History, Search, MessageSquare, Download, User, Bot, Wrench, 
   Trash2, Loader2, FileJson, FileText, Filter, ChevronDown, 
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight 
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check 
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -620,10 +617,11 @@ const messages = computed<{ role: string; content: string; tool_name?: string; t
 )
 
 // Close dropdown when clicking outside
+const dropdownRef = ref<HTMLElement | null>(null)
 onMounted(() => {
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement
-    if (!target.closest('.relative') || !target.closest('button')) {
+    if (dropdownRef.value && !dropdownRef.value.contains(target)) {
       showTypeDropdown.value = false
     }
   })
