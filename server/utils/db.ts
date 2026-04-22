@@ -8,10 +8,14 @@ const DB_PATH = path.join(getHermesPath(), 'state.db')
 // 查找 sqlite3 可执行文件的路径
 function findSqlite3(): string {
   const candidates = [
-    '/home/zlpoot/miniconda3/bin/sqlite3',
+    // macOS 常见路径
+    '/opt/homebrew/bin/sqlite3',
+    '/usr/local/opt/sqlite/bin/sqlite3',
+    // Linux 常见路径
     '/usr/bin/sqlite3',
     '/usr/local/bin/sqlite3',
-    'sqlite3' // fallback to PATH
+    // fallback to PATH
+    'sqlite3'
   ]
   
   for (const candidate of candidates) {
@@ -68,13 +72,13 @@ function run(sql: string, params: any[] = []): { changes: number, lastInsertRowi
   
   try {
     execSync(
-      `sqlite3 "${DB_PATH}" "${finalSql.replace(/"/g, '\\"')}"`,
+      `"${SQLITE3_PATH}" "${DB_PATH}" "${finalSql.replace(/"/g, '\\"')}"`,
       { encoding: 'utf-8', timeout: 5000 }
     )
     
     // 获取 lastInsertRowid
     const lastIdResult = execSync(
-      `sqlite3 "${DB_PATH}" "SELECT last_insert_rowid();"`,
+      `"${SQLITE3_PATH}" "${DB_PATH}" "SELECT last_insert_rowid();"`,
       { encoding: 'utf-8', timeout: 5000 }
     )
     

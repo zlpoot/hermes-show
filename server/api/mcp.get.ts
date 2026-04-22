@@ -104,7 +104,7 @@ export default defineEventHandler(async (event) => {
       example: `mcp_servers:
   filesystem:
     command: npx
-    args: ['-y', '@modelcontextprotocol/server-filesystem', '/home/user']
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '~/Documents']
   github:
     url: https://mcp.github.com
     env:
