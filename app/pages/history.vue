@@ -66,12 +66,12 @@
             <!-- Dropdown -->
             <div 
               v-if="showTypeDropdown" 
-              class="absolute left-0 right-0 top-full mt-1 bg-card border border-card-border rounded-lg shadow-lg z-20 max-h-64 overflow-y-auto">
-              <div class="p-2 border-b border-card-border flex justify-between">
+              class="absolute left-0 right-0 top-full mt-1 bg-background border border-card-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+              <div class="p-2 border-b border-card-border flex justify-between bg-background sticky top-0">
                 <button @click.prevent="selectAllTypes" class="text-xs text-primary hover:underline">全选</button>
                 <button @click.prevent="clearAllTypes" class="text-xs text-muted-foreground hover:text-foreground">清除</button>
               </div>
-              <div class="p-1">
+              <div class="p-1 bg-background">
                 <div 
                   v-for="p in platforms" 
                   :key="p.id"
