@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
       
       const sessions: any[] = await prisma.$queryRawUnsafe(
         `SELECT 
-          id, source_platform, started_at, ended_at, 
+          id, source, started_at, ended_at, 
           input_tokens, output_tokens
          FROM sessions 
          WHERE started_at > ? 
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
         }
       }
       
-      // Calculate provider performance using source_platform
+      // Calculate provider performance using source
       const providerStats = new Map<string, {
         calls: number
         successes: number
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
       }>()
       
       for (const session of sessions) {
-        const platform = session.source_platform || 'unknown'
+        const platform = session.source || 'unknown'
         const key = platform
         
         const stats = providerStats.get(key) || {
@@ -139,7 +139,7 @@ export default defineEventHandler(async (event) => {
         .slice(0, 10)
         .map(s => ({
           id: s.id,
-          provider: s.source_platform || 'unknown',
+          provider: s.source || 'unknown',
           model: '-',
           message: 'No output generated - possible API error or timeout',
           time: new Date(Number(s.started_at) * 1000).toLocaleString(),
