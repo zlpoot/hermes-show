@@ -10,10 +10,12 @@ interface SkillMeta {
   version?: string
   author?: string
   license?: string
+  created?: string
   metadata?: {
     hermes?: {
       tags?: string[]
       related_skills?: string[]
+      category?: string
     }
   }
 }
@@ -32,7 +34,19 @@ interface Skill {
   hasReferences: boolean
   hasScripts: boolean
   hasTemplates: boolean
+  source: 'learned' | 'bundled'  // learned = 自己学会的, bundled = 内置的
+  createdAt: number  // 文件创建时间戳
 }
+
+// 自学习技能的判断依据：4月15日之后的技能
+const LEARNED_SKILLS_THRESHOLD = new Date('2026-04-15T00:00:00Z').getTime()
+
+// 或者根据作者判断
+const LEARNED_AUTHORS = [
+  'HermesAgent',
+  'hermes-agent',
+  'Hermes Agent'
+]
 
 function parseSkillMd(skillPath: string): SkillMeta | null {
   try {
@@ -70,11 +84,18 @@ function scanSkillsDir(skillsDir: string): Skill[] {
       
       if (fs.existsSync(skillMdPath)) {
         const meta = parseSkillMd(skillMdPath)
+        const stat = fs.statSync(skillMdPath)
+        const createdAt = stat.birthtimeMs || stat.ctimeMs
         
         // Check for subdirectories
         const hasReferences = fs.existsSync(path.join(skillPath, 'references'))
         const hasScripts = fs.existsSync(path.join(skillPath, 'scripts'))
         const hasTemplates = fs.existsSync(path.join(skillPath, 'templates'))
+        
+        // 判断技能来源
+        const author = meta?.author || 'Unknown'
+        const isLearned = createdAt > LEARNED_SKILLS_THRESHOLD || 
+                         LEARNED_AUTHORS.some(a => author.includes(a))
         
         skills.push({
           id: `${category}/${skillDir}`,
@@ -82,14 +103,16 @@ function scanSkillsDir(skillsDir: string): Skill[] {
           description: meta?.description || 'No description',
           category: category,
           version: meta?.version || '1.0.0',
-          author: meta?.author || 'Unknown',
+          author: author,
           license: meta?.license || 'MIT',
           tags: meta?.metadata?.hermes?.tags || [],
           related_skills: meta?.metadata?.hermes?.related_skills || [],
           path: skillPath,
           hasReferences,
           hasScripts,
-          hasTemplates
+          hasTemplates,
+          source: isLearned ? 'learned' : 'bundled',
+          createdAt
         })
       }
     }
@@ -110,6 +133,11 @@ export default defineEventHandler(async (event) => {
   
   let skills = scanSkillsDir(skillsDir)
   
+  // Filter by source (learned/bundled)
+  if (query.source) {
+    skills = skills.filter(s => s.source === query.source)
+  }
+  
   // Filter by category
   if (query.category) {
     skills = skills.filter(s => s.category === query.category)
@@ -127,6 +155,10 @@ export default defineEventHandler(async (event) => {
   
   // Get unique categories
   const categories = [...new Set(skills.map(s => s.category))]
+  
+  // 按来源分组统计
+  const learnedCount = skills.filter(s => s.source === 'learned').length
+  const bundledCount = skills.filter(s => s.source === 'bundled').length
   
   // Get skill detail if id is provided
   if (query.id) {
@@ -154,8 +186,6 @@ export default defineEventHandler(async (event) => {
         scripts = fs.readdirSync(scriptPath).filter(f => f.endsWith('.py') || f.endsWith('.sh'))
       }
       
-      // TODO: 从日志或数据库统计 skill 使用情况
-      // 目前返回占位数据
       return {
         skill,
         content,
@@ -178,10 +208,40 @@ export default defineEventHandler(async (event) => {
     }
   }
   
+  // 按来源和分类组织数据
+  const groupedBySource = {
+    learned: {
+      label: '自学习技能',
+      description: '通过对话学习并总结的技能',
+      icon: 'Brain',
+      count: learnedCount,
+      categories: {} as Record<string, Skill[]>
+    },
+    bundled: {
+      label: '内置技能',
+      description: '系统预置的专业技能',
+      icon: 'Package',
+      count: bundledCount,
+      categories: {} as Record<string, Skill[]>
+    }
+  }
+  
+  // 填充分类数据
+  for (const skill of skills) {
+    const group = groupedBySource[skill.source]
+    if (!group.categories[skill.category]) {
+      group.categories[skill.category] = []
+    }
+    group.categories[skill.category].push(skill)
+  }
+  
   return {
     skills,
     categories: categories.sort(),
     total: skills.length,
+    learnedCount,
+    bundledCount,
+    groupedBySource,
     isRealHermesConnected: true,
     skillsPath: skillsDir
   }
