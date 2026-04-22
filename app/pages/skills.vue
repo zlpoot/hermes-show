@@ -168,6 +168,17 @@
         
         <!-- Content -->
         <div class="flex-1 overflow-y-auto p-6">
+          <!-- Chinese Description (优先显示) -->
+          <div v-if="activeTab === 'readme' && skillDetail.chineseDescription" class="mb-6">
+            <div class="p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <h4 class="text-sm font-medium text-primary mb-2 flex items-center gap-2">
+                <BookOpen :size="16" />
+                中文说明
+              </h4>
+              <pre class="whitespace-pre-wrap text-sm text-foreground">{{ skillDetail.chineseDescription }}</pre>
+            </div>
+          </div>
+          
           <!-- README -->
           <div v-if="activeTab === 'readme'" class="prose prose-invert max-w-none">
             <pre class="whitespace-pre-wrap text-sm bg-muted/30 p-4 rounded-xl border border-card-border overflow-x-auto">{{ skillDetail.content || '暂无详细说明' }}</pre>
@@ -238,6 +249,7 @@ interface Skill {
 interface SkillDetail {
   skill: Skill
   content?: string
+  chineseDescription?: string
   references?: string[]
   scripts?: string[]
 }

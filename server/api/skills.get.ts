@@ -201,9 +201,17 @@ export default defineEventHandler(async (event) => {
         scripts = fs.readdirSync(scriptPath).filter(f => f.endsWith('.py') || f.endsWith('.sh'))
       }
       
+      // 提取中文说明（查找 ## 中文说明 或 ## 简介 部分）
+      let chineseDescription = ''
+      const chineseMatch = content.match(/##\s*(?:中文说明|简介|中文简介)\s*\n([\s\S]*?)(?=\n##\s|$)/)
+      if (chineseMatch) {
+        chineseDescription = chineseMatch[1].trim()
+      }
+      
       return {
         skill,
         content,
+        chineseDescription,
         references,
         scripts,
         stats: {
