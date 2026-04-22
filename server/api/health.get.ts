@@ -154,8 +154,19 @@ export default defineEventHandler(async (event) => {
     const pidFile = path.join(hermesPath, 'gateway.pid')
     if (fs.existsSync(pidFile)) {
       try {
-        const pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim())
-        if (!isNaN(pid)) {
+        const pidContent = fs.readFileSync(pidFile, 'utf-8').trim()
+        let pid: number | null = null
+        
+        // Try parsing as JSON first (new format: {"pid": 123456, ...})
+        try {
+          const pidData = JSON.parse(pidContent)
+          pid = pidData.pid
+        } catch {
+          // Fallback to plain text format (legacy: just "123456")
+          pid = parseInt(pidContent)
+        }
+        
+        if (pid && !isNaN(pid)) {
           // Check if process is running
           try {
             process.kill(pid, 0)

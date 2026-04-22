@@ -83,7 +83,7 @@
                  :style="{ width: `${data?.systemInfo?.usedMemoryPercent || 0}%` }"></div>
           </div>
           <div class="flex justify-between text-xs text-muted-foreground mt-1">
-            <span>已用: {{ data?.systemInfo?.freeMemory }}</span>
+            <span>空闲: {{ data?.systemInfo?.freeMemory }}</span>
             <span>总计: {{ data?.systemInfo?.totalMemory }}</span>
           </div>
         </div>
