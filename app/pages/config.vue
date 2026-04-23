@@ -866,7 +866,7 @@
 
     <!-- Provider Modal -->
     <div v-if="showProviderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="closeProviderModal">
-      <div class="glass-panel p-6 w-full max-w-lg mx-4">
+      <div class="glass-panel p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-lg font-semibold">{{ editingProviderId ? '编辑提供商' : '添加提供商' }}</h3>
           <button @click="closeProviderModal" class="p-2 hover:bg-muted rounded-lg">
@@ -875,6 +875,20 @@
         </div>
 
         <div class="space-y-4">
+          <!-- Cloud Provider Preset -->
+          <div class="space-y-2">
+            <label class="block text-sm font-medium">云厂商预设</label>
+            <select v-model="providerForm.preset"
+              @change="applyProviderPreset"
+              class="w-full bg-background border border-card-border rounded-xl px-4 py-2 text-sm">
+              <option value="">自定义 (手动填写)</option>
+              <option v-for="(preset, key) in cloudProviderPresets" :key="key" :value="key">
+                {{ preset.name }}
+              </option>
+            </select>
+            <p class="text-xs text-muted-foreground">选择云厂商后自动填充配置</p>
+          </div>
+
           <div class="space-y-2">
             <label class="block text-sm font-medium">ID <span class="text-red-400">*</span></label>
             <input type="text" v-model="providerForm.id"
@@ -915,11 +929,36 @@
               <option value="ollama">Ollama</option>
             </select>
           </div>
+          
+          <!-- Model Selection -->
           <div class="space-y-2">
             <label class="block text-sm font-medium">默认模型</label>
-            <input type="text" v-model="providerForm.default_model"
+            <div class="flex gap-2">
+              <select v-model="providerForm.default_model"
+                class="flex-1 bg-background border border-card-border rounded-xl px-4 py-2 text-sm">
+                <option value="">选择模型</option>
+                <option v-for="model in availableModels" :key="model" :value="model">
+                  {{ model }}
+                </option>
+              </select>
+              <button type="button" @click="fetchModelsFromApi"
+                class="px-3 py-2 bg-muted hover:bg-muted/80 rounded-xl text-xs flex items-center gap-1"
+                :disabled="!providerForm.base_url || isFetchingModels">
+                <Loader2 v-if="isFetchingModels" :size="12" class="animate-spin" />
+                <RefreshCw v-else :size="12" />
+                <span class="hidden sm:inline">获取</span>
+              </button>
+            </div>
+            <p class="text-xs text-muted-foreground">从预设列表选择或点击获取从 API 拉取</p>
+          </div>
+          
+          <!-- Custom Model Input -->
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-muted-foreground">或输入自定义模型</label>
+            <input type="text" v-model="providerForm.custom_model"
+              @input="providerForm.default_model = providerForm.custom_model"
               class="w-full bg-background border border-card-border rounded-xl px-4 py-2 text-sm"
-              placeholder="gpt-4, claude-3-opus 等" />
+              placeholder="输入不在列表中的模型名称" />
           </div>
         </div>
 
@@ -1040,6 +1079,121 @@ const tabs = [
   { id: 'advanced', label: '高级', icon: Settings },
 ]
 
+// Cloud provider presets
+const cloudProviderPresets: Record<string, {
+  name: string
+  base_url: string
+  key_env: string
+  api_mode: string
+  models: string[]
+}> = {
+  openai: {
+    name: 'OpenAI',
+    base_url: 'https://api.openai.com/v1',
+    key_env: 'OPENAI_API_KEY',
+    api_mode: 'openai',
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1', 'o1-mini', 'o1-preview']
+  },
+  anthropic: {
+    name: 'Anthropic',
+    base_url: 'https://api.anthropic.com/v1',
+    key_env: 'ANTHROPIC_API_KEY',
+    api_mode: 'anthropic',
+    models: ['claude-sonnet-4', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    base_url: 'https://api.deepseek.com/v1',
+    key_env: 'DEEPSEEK_API_KEY',
+    api_mode: 'openai',
+    models: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner']
+  },
+  jdcloud: {
+    name: 'JD Cloud (京东云)',
+    base_url: 'https://modelservice.jdcloud.com/coding/openai/v1',
+    key_env: 'JD_CLOUD_API_KEY',
+    api_mode: 'openai',
+    models: ['GLM-4', 'GLM-4-Plus', 'GLM-4-Flash', 'GLM-5', 'Qwen-Turbo', 'Qwen-Plus', 'Qwen-Max', 'Yi-Large', 'Baichuan2-Turbo', 'Doubao-Pro-32k']
+  },
+  ctyun: {
+    name: 'CTYUN (天翼云)',
+    base_url: 'https://wishub-x6.ctyun.cn/v1',
+    key_env: 'CTYUN_API_KEY',
+    api_mode: 'openai',
+    models: ['glm-4', 'glm-4-flash', 'glm-4-plus', 'glm-5', 'qwen-turbo', 'qwen-plus', 'qwen-max']
+  },
+  moonshot: {
+    name: 'Moonshot (月之暗面)',
+    base_url: 'https://api.moonshot.cn/v1',
+    key_env: 'MOONSHOT_API_KEY',
+    api_mode: 'openai',
+    models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k']
+  },
+  zhipu: {
+    name: 'ZhiPu (智谱)',
+    base_url: 'https://open.bigmodel.cn/api/paas/v4',
+    key_env: 'ZHIPU_API_KEY',
+    api_mode: 'openai',
+    models: ['glm-4', 'glm-4-plus', 'glm-4-flash', 'glm-4-long', 'glm-4-air', 'glm-4-airx', 'glm-4v', 'glm-4v-plus']
+  },
+  qwen: {
+    name: 'Qwen (通义千问)',
+    base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    key_env: 'DASHSCOPE_API_KEY',
+    api_mode: 'openai',
+    models: ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-max-longcontext', 'qwen-long', 'qwen-vl-max', 'qwen-vl-plus']
+  },
+  yi: {
+    name: 'Yi (零一万物)',
+    base_url: 'https://api.lingyiwanwu.com/v1',
+    key_env: 'YI_API_KEY',
+    api_mode: 'openai',
+    models: ['yi-large', 'yi-medium', 'yi-spark', 'yi-large-turbo', 'yi-large-rag', 'yi-vision']
+  },
+  baichuan: {
+    name: 'Baichuan (百川)',
+    base_url: 'https://api.baichuan-ai.com/v1',
+    key_env: 'BAICHUAN_API_KEY',
+    api_mode: 'openai',
+    models: ['Baichuan4', 'Baichuan3-Turbo', 'Baichuan3-Turbo-128k', 'Baichuan2-Turbo']
+  },
+  minimax: {
+    name: 'MiniMax',
+    base_url: 'https://api.minimax.chat/v1',
+    key_env: 'MINIMAX_API_KEY',
+    api_mode: 'openai',
+    models: ['abab6.5-chat', 'abab6.5s-chat', 'abab5.5-chat', 'abab5.5s-chat']
+  },
+  siliconflow: {
+    name: 'SiliconFlow',
+    base_url: 'https://api.siliconflow.cn/v1',
+    key_env: 'SILICONFLOW_API_KEY',
+    api_mode: 'openai',
+    models: ['Qwen/Qwen2.5-72B-Instruct', 'Qwen/Qwen2.5-32B-Instruct', 'deepseek-ai/DeepSeek-V2.5', 'meta-llama/Meta-Llama-3.1-405B-Instruct', 'THUDM/glm-4-9b-chat']
+  },
+  groq: {
+    name: 'Groq',
+    base_url: 'https://api.groq.com/openai/v1',
+    key_env: 'GROQ_API_KEY',
+    api_mode: 'openai',
+    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama-3.2-1b-preview', 'llama-3.2-3b-preview', 'mixtral-8x7b-32768', 'gemma2-9b-it']
+  },
+  together: {
+    name: 'Together AI',
+    base_url: 'https://api.together.xyz/v1',
+    key_env: 'TOGETHER_API_KEY',
+    api_mode: 'openai',
+    models: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo', 'mistralai/Mixtral-8x7B-Instruct-v0.1', 'Qwen/Qwen2.5-72B-Instruct-Turbo']
+  },
+  ollama: {
+    name: 'Ollama (本地)',
+    base_url: 'http://localhost:11434/v1',
+    key_env: '',
+    api_mode: 'ollama',
+    models: ['llama3.2', 'llama3.1', 'llama2', 'mistral', 'codellama', 'qwen2.5', 'gemma2', 'deepseek-r1']
+  }
+}
+
 // Auxiliary tasks configuration
 const auxiliaryTasks = {
   vision: { label: '视觉分析', icon: Eye, placeholder: '如: gpt-4o, claude-3-opus' },
@@ -1150,11 +1304,24 @@ const providerForm = reactive({
   base_url: '',
   key_env: '',
   api_mode: 'openai',
-  default_model: ''
+  default_model: '',
+  preset: '',
+  custom_model: ''
 })
 const providerErrors = reactive({
   id: '',
   base_url: ''
+})
+const isFetchingModels = ref(false)
+const fetchedModels = ref<string[]>([])
+
+// Available models (preset + fetched)
+const availableModels = computed(() => {
+  const preset = providerForm.preset
+  if (preset && cloudProviderPresets[preset]) {
+    return [...cloudProviderPresets[preset].models, ...fetchedModels.value]
+  }
+  return fetchedModels.value.length > 0 ? fetchedModels.value : []
 })
 
 const isSaving = ref(false)
@@ -1330,6 +1497,15 @@ const openProviderModal = (id?: string) => {
     providerForm.key_env = provider.key_env || ''
     providerForm.api_mode = provider.api_mode || 'openai'
     providerForm.default_model = provider.default_model || ''
+    providerForm.preset = ''
+    providerForm.custom_model = ''
+    // Try to find matching preset
+    for (const [key, preset] of Object.entries(cloudProviderPresets)) {
+      if (preset.base_url === provider.base_url) {
+        providerForm.preset = key
+        break
+      }
+    }
   } else {
     editingProviderId.value = ''
     providerForm.id = ''
@@ -1338,7 +1514,10 @@ const openProviderModal = (id?: string) => {
     providerForm.key_env = ''
     providerForm.api_mode = 'openai'
     providerForm.default_model = ''
+    providerForm.preset = ''
+    providerForm.custom_model = ''
   }
+  fetchedModels.value = []
   providerErrors.id = ''
   providerErrors.base_url = ''
   showProviderModal.value = true
@@ -1346,6 +1525,49 @@ const openProviderModal = (id?: string) => {
 
 const closeProviderModal = () => {
   showProviderModal.value = false
+}
+
+// Apply preset when cloud provider is selected
+const applyProviderPreset = () => {
+  const preset = providerForm.preset
+  if (preset && cloudProviderPresets[preset]) {
+    const config = cloudProviderPresets[preset]
+    providerForm.id = preset
+    providerForm.name = config.name
+    providerForm.base_url = config.base_url
+    providerForm.key_env = config.key_env
+    providerForm.api_mode = config.api_mode
+    if (config.models.length > 0) {
+      providerForm.default_model = config.models[0]
+    }
+    fetchedModels.value = []
+  }
+}
+
+// Fetch models from API
+const fetchModelsFromApi = async () => {
+  if (!providerForm.base_url || isFetchingModels.value) return
+  
+  isFetchingModels.value = true
+  fetchedModels.value = []
+  
+  try {
+    const response = await $fetch<{ data?: Array<{ id: string }> }>('/api/models', {
+      method: 'POST',
+      body: {
+        base_url: providerForm.base_url,
+        api_mode: providerForm.api_mode
+      }
+    })
+    
+    if (response?.data) {
+      fetchedModels.value = response.data.map(m => m.id)
+    }
+  } catch (e) {
+    console.error('Failed to fetch models:', e)
+  } finally {
+    isFetchingModels.value = false
+  }
 }
 
 const saveProvider = () => {
