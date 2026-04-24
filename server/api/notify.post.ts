@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
-import { getHermesPath } from '../utils/hermes'
+import { getHermesPath, getHermesConfig } from '../utils/hermes'
 
 // 通知频道配置类型定义
 interface NotificationChannel {
@@ -84,36 +84,15 @@ function routeEventToChannel(event: string, severity: string, config: Notificati
   return []
 }
 
-// Discord Bot Token 从运行时配置或 .env 文件获取
-async function getDiscordConfig() {
-  const config = useRuntimeConfig()
+// Discord Bot Token 从 config.yaml 获取
+function getDiscordConfig() {
+  const config = getHermesConfig()
   
-  // 优先从 runtimeConfig 获取
-  let botToken = config.discordBotToken || process.env.DISCORD_BOT_TOKEN || ''
-  let proxy = config.discordProxy || process.env.DISCORD_PROXY || ''
+  // 从 config.yaml 的 platforms.discord.token 获取
+  const botToken = config?.platforms?.discord?.token || ''
   
-  // 如果没有配置，尝试从 .env 文件读取
-  if (!botToken || !proxy) {
-    try {
-      const fs = await import('node:fs')
-      const path = await import('node:path')
-      const envPath = path.join(process.cwd(), '.env')
-      if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, 'utf-8')
-        for (const line of envContent.split('\n')) {
-          const trimmed = line.trim()
-          if (trimmed.startsWith('NUXT_DISCORD_BOT_TOKEN=')) {
-            botToken = trimmed.slice(23).replace(/^["']|["']$/g, '')
-          }
-          if (trimmed.startsWith('NUXT_DISCORD_PROXY=')) {
-            proxy = trimmed.slice(19).replace(/^["']|["']$/g, '')
-          }
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
+  // 代理配置（如果需要）
+  const proxy = config?.discord?.proxy || process.env.DISCORD_PROXY || ''
   
   return { botToken, proxy }
 }
@@ -172,7 +151,7 @@ async function sendDiscordNotification(
     }
     
     // 使用 Bot Token 发送到指定频道
-    const { botToken, proxy } = await getDiscordConfig()
+    const { botToken, proxy } = getDiscordConfig()
     if (channel.channelId && botToken) {
       const discordApiUrl = `https://discord.com/api/v10/channels/${channel.channelId}/messages`
       
