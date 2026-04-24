@@ -91,8 +91,13 @@ function getDiscordConfig() {
   // 从 config.yaml 的 platforms.discord.token 获取
   const botToken = config?.platforms?.discord?.token || ''
   
-  // 代理配置（如果需要）
-  const proxy = config?.discord?.proxy || process.env.DISCORD_PROXY || ''
+  // 代理配置（Discord API 在国内需要代理）
+  // 优先级: config.yaml > 环境变量
+  const proxy = config?.discord?.proxy || 
+                process.env.DISCORD_PROXY || 
+                process.env.ALL_PROXY || 
+                process.env.HTTPS_PROXY || 
+                ''
   
   return { botToken, proxy }
 }

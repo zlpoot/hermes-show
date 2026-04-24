@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { getHermesPath, getHermesConfig } from '../utils/hermes'
+import { getHermesPath, getHermesConfig } from '../../utils/hermes'
 
 // 通知频道配置类型定义
 interface NotificationChannel {
@@ -45,7 +45,12 @@ function loadNotificationConfig(): NotificationConfig {
 function getDiscordConfig() {
   const config = getHermesConfig()
   const botToken = config?.platforms?.discord?.token || ''
-  const proxy = config?.discord?.proxy || process.env.DISCORD_PROXY || ''
+  // 代理配置（Discord API 在国内需要代理）
+  const proxy = config?.discord?.proxy || 
+                process.env.DISCORD_PROXY || 
+                process.env.ALL_PROXY || 
+                process.env.HTTPS_PROXY || 
+                ''
   return { botToken, proxy }
 }
 
