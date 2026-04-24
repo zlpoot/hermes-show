@@ -1,25 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { getHermesPath } from '../../utils/hermes'
-
-// 通知频道配置类型定义
-interface NotificationChannel {
-  type: 'discord' | 'telegram' | 'weixin'
-  name: string
-  description?: string
-  channelId?: string
-  webhookUrl?: string
-  events: string[]
-  enabled: boolean
-  status: 'healthy' | 'degraded' | 'error'
-}
-
-interface NotificationConfig {
-  channels: Record<string, NotificationChannel>
-  defaultChannel: string
-  eventRouting: Record<string, string>
-  severityOverrides: Record<string, string>
-}
+import type { NotificationChannel, NotificationConfig } from '../../types/notification'
 
 // 加载频道配置
 function loadNotificationConfig(): NotificationConfig {
@@ -33,11 +15,15 @@ function loadNotificationConfig(): NotificationConfig {
     console.error('[notification-channels] Failed to load config', e)
   }
   
+  // 返回默认配置
   return {
-    channels: {},
-    defaultChannel: '',
-    eventRouting: {},
-    severityOverrides: {}
+    channels: [],
+    event_types: {
+      critical: ['system_down', 'gateway_failed', 'budget_exceeded'],
+      error: ['api_error', 'task_failed', 'cron_failed'],
+      warning: ['budget_warning', 'rate_limit', 'disk_space'],
+      info: ['task_complete', 'cron_complete', 'backup_complete']
+    }
   }
 }
 
@@ -64,7 +50,7 @@ export default defineEventHandler(async (event) => {
     
     // 返回特定频道
     if (query.channelId) {
-      const channel = config.channels[query.channelId as string]
+      const channel = config.channels.find(c => c.id === query.channelId)
       if (!channel) {
         throw createError({
           statusCode: 404,
@@ -73,31 +59,23 @@ export default defineEventHandler(async (event) => {
       }
       return {
         success: true,
-        channel: {
-          id: query.channelId,
-          ...channel
-        }
+        channel
       }
     }
     
     // 返回所有频道
-    const channelsList = Object.entries(config.channels).map(([id, channel]) => ({
-      id,
-      ...channel,
-      // 隐藏敏感信息
-      webhookUrl: channel.webhookUrl ? '***configured***' : undefined
-    }))
-    
     return {
       success: true,
-      channels: channelsList,
-      defaultChannel: config.defaultChannel,
-      eventRouting: config.eventRouting,
-      severityOverrides: config.severityOverrides,
+      channels: config.channels,
+      event_types: config.event_types,
       stats: {
-        total: channelsList.length,
-        enabled: channelsList.filter(c => c.enabled).length,
-        healthy: channelsList.filter(c => c.status === 'healthy').length
+        total: config.channels.length,
+        enabled: config.channels.filter(c => c.enabled).length,
+        platforms: {
+          discord: config.channels.filter(c => c.platform === 'discord').length,
+          telegram: config.channels.filter(c => c.platform === 'telegram').length,
+          weixin: config.channels.filter(c => c.platform === 'weixin').length
+        }
       }
     }
   }
@@ -106,14 +84,14 @@ export default defineEventHandler(async (event) => {
     // 创建新频道
     const body = await readBody(event)
     
-    if (!body.id || !body.type || !body.name) {
+    if (!body.id || !body.platform || !body.name || !body.channel_id) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'Missing required fields: id, type, name'
+        statusMessage: 'Missing required fields: id, platform, name, channel_id'
       })
     }
     
-    if (config.channels[body.id]) {
+    if (config.channels.find(c => c.id === body.id)) {
       throw createError({
         statusCode: 409,
         statusMessage: 'Channel already exists'
@@ -122,27 +100,15 @@ export default defineEventHandler(async (event) => {
     
     // 创建新频道
     const newChannel: NotificationChannel = {
-      type: body.type,
+      id: body.id,
       name: body.name,
-      description: body.description || '',
-      channelId: body.channelId || '',
-      webhookUrl: body.webhookUrl || '',
-      events: body.events || [],
-      enabled: body.enabled !== false,
-      status: 'healthy'
+      platform: body.platform,
+      channel_id: body.channel_id,
+      events: body.events || ['*'],
+      enabled: body.enabled !== false
     }
     
-    config.channels[body.id] = newChannel
-    
-    // 设置为默认频道（如果是第一个）
-    if (Object.keys(config.channels).length === 1) {
-      config.defaultChannel = body.id
-    }
-    
-    // 更新事件路由
-    for (const event of newChannel.events) {
-      config.eventRouting[event] = body.id
-    }
+    config.channels.push(newChannel)
     
     if (!saveNotificationConfig(config)) {
       throw createError({
@@ -153,11 +119,7 @@ export default defineEventHandler(async (event) => {
     
     return {
       success: true,
-      channel: {
-        id: body.id,
-        ...newChannel,
-        webhookUrl: newChannel.webhookUrl ? '***configured***' : undefined
-      },
+      channel: newChannel,
       message: 'Channel created successfully'
     }
   }
@@ -173,8 +135,8 @@ export default defineEventHandler(async (event) => {
       })
     }
     
-    const existingChannel = config.channels[body.id]
-    if (!existingChannel) {
+    const channelIndex = config.channels.findIndex(c => c.id === body.id)
+    if (channelIndex === -1) {
       throw createError({
         statusCode: 404,
         statusMessage: 'Channel not found'
@@ -182,32 +144,12 @@ export default defineEventHandler(async (event) => {
     }
     
     // 更新频道配置
-    if (body.name) existingChannel.name = body.name
-    if (body.description !== undefined) existingChannel.description = body.description
-    if (body.channelId !== undefined) existingChannel.channelId = body.channelId
-    if (body.webhookUrl !== undefined) existingChannel.webhookUrl = body.webhookUrl
-    if (body.events) existingChannel.events = body.events
-    if (body.enabled !== undefined) existingChannel.enabled = body.enabled
-    if (body.status) existingChannel.status = body.status
-    
-    // 更新事件路由
-    if (body.events) {
-      // 移除旧的路由
-      for (const key of Object.keys(config.eventRouting)) {
-        if (config.eventRouting[key] === body.id && !body.events.includes(key)) {
-          delete config.eventRouting[key]
-        }
-      }
-      // 添加新的路由
-      for (const event of body.events) {
-        config.eventRouting[event] = body.id
-      }
-    }
-    
-    // 更新默认频道
-    if (body.isDefault) {
-      config.defaultChannel = body.id
-    }
+    const channel = config.channels[channelIndex]
+    if (body.name) channel.name = body.name
+    if (body.platform) channel.platform = body.platform
+    if (body.channel_id) channel.channel_id = body.channel_id
+    if (body.events) channel.events = body.events
+    if (body.enabled !== undefined) channel.enabled = body.enabled
     
     if (!saveNotificationConfig(config)) {
       throw createError({
@@ -218,11 +160,7 @@ export default defineEventHandler(async (event) => {
     
     return {
       success: true,
-      channel: {
-        id: body.id,
-        ...existingChannel,
-        webhookUrl: existingChannel.webhookUrl ? '***configured***' : undefined
-      },
+      channel,
       message: 'Channel updated successfully'
     }
   }
@@ -239,7 +177,8 @@ export default defineEventHandler(async (event) => {
       })
     }
     
-    if (!config.channels[channelId]) {
+    const channelIndex = config.channels.findIndex(c => c.id === channelId)
+    if (channelIndex === -1) {
       throw createError({
         statusCode: 404,
         statusMessage: 'Channel not found'
@@ -247,20 +186,7 @@ export default defineEventHandler(async (event) => {
     }
     
     // 删除频道
-    delete config.channels[channelId]
-    
-    // 移除相关的事件路由
-    for (const key of Object.keys(config.eventRouting)) {
-      if (config.eventRouting[key] === channelId) {
-        delete config.eventRouting[key]
-      }
-    }
-    
-    // 更新默认频道
-    if (config.defaultChannel === channelId) {
-      const remainingChannels = Object.keys(config.channels)
-      config.defaultChannel = remainingChannels[0] || ''
-    }
+    config.channels.splice(channelIndex, 1)
     
     if (!saveNotificationConfig(config)) {
       throw createError({

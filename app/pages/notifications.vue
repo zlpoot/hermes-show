@@ -294,7 +294,7 @@
           
           <div>
             <label class="text-xs text-muted-foreground block mb-2">渠道类型 <span class="text-red-400">*</span></label>
-            <select v-model="channelForm.type" class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+            <select v-model="channelForm.platform" class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
               <option value="discord">Discord</option>
               <option value="telegram">Telegram</option>
               <option value="weixin">微信</option>
@@ -307,47 +307,13 @@
                    class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
           </div>
           
+          <!-- Channel ID -->
           <div>
-            <label class="text-xs text-muted-foreground block mb-2">描述</label>
-            <input type="text" v-model="channelForm.description" placeholder="简短描述用途"
+            <label class="text-xs text-muted-foreground block mb-2">Channel ID <span class="text-red-400">*</span></label>
+            <input type="text" v-model="channelForm.channel_id" placeholder="例如: 123456789012345678"
                    class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+            <p class="text-xs text-muted-foreground mt-1">Discord 频道 ID（使用 Bot Token 发送）</p>
           </div>
-          
-          <!-- Discord Webhook -->
-          <template v-if="channelForm.type === 'discord'">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-2">Channel ID <span class="text-red-400">*</span></label>
-              <input type="text" v-model="channelForm.channelId" placeholder="例如: 123456789012345678"
-                     class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-              <p class="text-xs text-muted-foreground mt-1">Discord 频道 ID，使用 Bot Token 发送</p>
-            </div>
-          </template>
-          
-          <!-- Telegram -->
-          <template v-if="channelForm.type === 'telegram'">
-            <div>
-              <label class="text-xs text-muted-foreground block mb-2">Bot Token</label>
-              <input type="password" v-model="channelForm.botToken" placeholder="123456:ABC-DEF..."
-                     class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-2">Chat ID</label>
-              <input type="text" v-model="channelForm.chatId" placeholder="-1001234567890"
-                     class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-            </div>
-          </template>
-          
-          <!-- WeChat -->
-          <template v-if="channelForm.type === 'weixin'">
-            <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-              <p class="text-xs text-amber-400">微信通知通过 Hermes Gateway 配置，请确保网关已启动。</p>
-            </div>
-            <div>
-              <label class="text-xs text-muted-foreground block mb-2">用户/群ID</label>
-              <input type="text" v-model="channelForm.channelId" placeholder="微信用户ID或群ID"
-                     class="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary" />
-            </div>
-          </template>
           
           <!-- Event Types Selection -->
           <div>
@@ -366,11 +332,6 @@
           <div class="flex items-center gap-2">
             <input type="checkbox" v-model="channelForm.enabled" id="channelEnabled" class="rounded" />
             <label for="channelEnabled" class="text-sm">启用此渠道</label>
-          </div>
-          
-          <div class="flex items-center gap-2">
-            <input type="checkbox" v-model="channelForm.isDefault" id="isDefault" class="rounded" />
-            <label for="isDefault" class="text-sm">设为默认渠道</label>
           </div>
         </div>
         
@@ -433,16 +394,11 @@ const editingChannel = ref<any>(null)
 // Form state
 const channelForm = reactive({
   id: '',
-  type: 'discord',
+  platform: 'discord',
   name: '',
-  description: '',
-  webhookUrl: '',
-  botToken: '',
-  chatId: '',
-  channelId: '',
+  channel_id: '',
   events: [] as string[],
-  enabled: true,
-  isDefault: false
+  enabled: true
 })
 
 // History filter
@@ -695,37 +651,27 @@ const openChannelModal = (channel?: any) => {
   if (channel) {
     Object.assign(channelForm, {
       id: channel.id,
-      type: channel.type,
+      platform: channel.platform || channel.type,
       name: channel.name,
-      description: channel.description || '',
-      webhookUrl: '',
-      botToken: '',
-      chatId: '',
-      channelId: channel.channelId || '',
+      channel_id: channel.channel_id || channel.channelId,
       events: channel.events || [],
-      enabled: channel.enabled,
-      isDefault: channel.isDefault
+      enabled: channel.enabled
     })
   } else {
     Object.assign(channelForm, {
       id: '',
-      type: 'discord',
+      platform: 'discord',
       name: '',
-      description: '',
-      webhookUrl: '',
-      botToken: '',
-      chatId: '',
-      channelId: '',
+      channel_id: '',
       events: [],
-      enabled: true,
-      isDefault: false
+      enabled: true
     })
   }
   showChannelModal.value = true
 }
 
 const saveChannel = async () => {
-  if (!channelForm.id || !channelForm.type || !channelForm.name) {
+  if (!channelForm.id || !channelForm.platform || !channelForm.name || !channelForm.channel_id) {
     showToast('error', '请填写必填项')
     return
   }
@@ -734,23 +680,11 @@ const saveChannel = async () => {
   try {
     const body: any = {
       id: channelForm.id,
-      type: channelForm.type,
+      platform: channelForm.platform,
       name: channelForm.name,
-      description: channelForm.description,
-      events: channelForm.events,
-      enabled: channelForm.enabled,
-      isDefault: channelForm.isDefault
-    }
-    
-    // Add type-specific config
-    if (channelForm.type === 'discord') {
-      body.webhookUrl = channelForm.webhookUrl
-      body.channelId = channelForm.channelId
-    } else if (channelForm.type === 'telegram') {
-      body.botToken = channelForm.botToken
-      body.chatId = channelForm.chatId
-    } else if (channelForm.type === 'weixin') {
-      body.channelId = channelForm.channelId
+      channel_id: channelForm.channel_id,
+      events: channelForm.events.length > 0 ? channelForm.events : ['*'],
+      enabled: channelForm.enabled
     }
     
     if (editingChannel.value) {
