@@ -10,7 +10,7 @@ datasource db {
 model Session {
   id              String  @id
   title           String?
-  source_platform String?
+  source          String?  // Changed from source_platform to match Hermes Agent schema
   started_at      Float?
   ended_at        Float?
   input_tokens    Int?

@@ -106,14 +106,14 @@ export default defineEventHandler(async (event) => {
         const activeTasksData = await prisma.session.findMany({
           where: { ended_at: null },
           take: 10,
-          select: { id: true, title: true, source_platform: true, started_at: true }
+          select: { id: true, title: true, source: true, started_at: true }
         })
         
         activeTasks = activeTasksData.map((t: any) => ({
           id: t.id,
           name: t.title || 'Unnamed Task',
           agent: 'hermes-core',
-          platform: t.source_platform || 'Local',
+          platform: t.source || 'Local',
           time: formatTime(t.started_at)
         }))
       } catch(e) {
@@ -123,14 +123,14 @@ export default defineEventHandler(async (event) => {
           stats.activeAgents = Number(countResult[0]?.count || 0)
           
           const fallbackTasks: any[] = await prisma.$queryRaw`
-            SELECT id, title, 'Local' as source_platform, started_at 
+            SELECT id, title, source, started_at 
             FROM sessions WHERE ended_at IS NULL LIMIT 10
           `
           activeTasks = fallbackTasks.map((t: any) => ({
             id: t.id,
             name: t.title || 'Unnamed Task',
             agent: 'hermes-core',
-            platform: 'Local',
+            platform: t.source || 'Local',
             time: formatTime(t.started_at)
           }))
         } catch(err) {}

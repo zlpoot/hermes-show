@@ -27,6 +27,13 @@ export default defineNuxtConfig({
   experimental: {
     appManifest: false
   },
+  // 允许外部访问
+  nitro: {
+    devServer: {
+      host: '0.0.0.0',
+      port: 3000
+    }
+  },
   vite: {
     optimizeDeps: {
       include: [
