@@ -1,5 +1,8 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { getHermesDB, getHermesPath } from '../utils/hermes'
+import fs from 'node:fs'
+import path from 'node:path'
+import readline from 'node:readline'
 
 // Model pricing (USD per 1M tokens)
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
@@ -30,8 +33,77 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const prisma = getHermesDB()
   
-  if (!prisma) {
-    console.log('[cost] No database connection')
+  // Session data from both sources
+  interface SessionData {
+    id: string
+    source: string
+    model: string
+    input_tokens: number
+    output_tokens: number
+    started_at: number
+  }
+  
+  let allSessions: SessionData[] = []
+  
+  // 1. 从 SQLite 读取会话数据
+  if (prisma) {
+    try {
+      const dbSessions: any[] = await prisma.$queryRawUnsafe(`
+        SELECT id, source, model, input_tokens, output_tokens, started_at
+        FROM sessions
+        ORDER BY started_at DESC
+      `)
+      
+      for (const s of dbSessions) {
+        allSessions.push({
+          id: s.id,
+          source: s.source || 'cli',
+          model: s.model || 'default',
+          input_tokens: s.input_tokens || 0,
+          output_tokens: s.output_tokens || 0,
+          started_at: s.started_at || 0
+        })
+      }
+    } catch (e) {
+      console.error('[cost] Database query failed:', e)
+    }
+  }
+  
+  // 2. 从 JSONL 文件读取并补充缺失的会话
+  const dbSessionIds = new Set(allSessions.map(s => s.id))
+  try {
+    const jsonlSessions = await estimateTokensFromJsonl()
+    
+    for (const js of jsonlSessions) {
+      if (!dbSessionIds.has(js.id)) {
+        // JSONL 会话不在数据库中，添加它
+        allSessions.push({
+          id: js.id,
+          source: js.platform,
+          model: js.model,
+          input_tokens: js.inputTokens,
+          output_tokens: js.outputTokens,
+          started_at: js.startedAt
+        })
+      } else {
+        // 已存在，但如果数据库中的 token 为 0，使用 JSONL 估算值
+        const existing = allSessions.find(s => s.id === js.id)
+        if (existing && existing.input_tokens === 0 && existing.output_tokens === 0) {
+          existing.input_tokens = js.inputTokens
+          existing.output_tokens = js.outputTokens
+        }
+        // 如果数据库中 model 为空，使用 JSONL 的值
+        if (existing && (!existing.model || existing.model === 'default')) {
+          existing.model = js.model
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[cost] JSONL parsing failed:', e)
+  }
+  
+  // 如果没有任何数据，返回空结果
+  if (allSessions.length === 0) {
     return {
       summary: { totalSessions: 0, totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, totalCost: 0, avgCostPerSession: 0 },
       byModel: [],
@@ -40,14 +112,6 @@ export default defineEventHandler(async (event) => {
       isRealHermesConnected: false
     }
   }
-  
-  try {
-    // Get all sessions with actual token data from database
-    const sessions: any[] = await prisma.$queryRawUnsafe(`
-      SELECT id, source, model, input_tokens, output_tokens, started_at
-      FROM sessions
-      ORDER BY started_at DESC
-    `)
     
     // Aggregation containers
     const byModel: Record<string, { sessions: number; inputTokens: number; outputTokens: number; cost: number }> = {}
@@ -57,10 +121,10 @@ export default defineEventHandler(async (event) => {
     let totalInputTokens = 0
     let totalOutputTokens = 0
     let totalCost = 0
-    let totalSessions = sessions.length
+    let totalSessions = allSessions.length
     
     // Process each session
-    for (const session of sessions) {
+    for (const session of allSessions) {
       const inputTokens = session.input_tokens || 0
       const outputTokens = session.output_tokens || 0
       
@@ -167,16 +231,6 @@ export default defineEventHandler(async (event) => {
       chartData,
       isRealHermesConnected: true
     }
-  } catch (e) {
-    console.error('[cost] Database query failed:', e)
-    return {
-      summary: { totalSessions: 0, totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, totalCost: 0, avgCostPerSession: 0 },
-      byModel: [],
-      byPlatform: [],
-      chartData: { labels: [], datasets: [] },
-      isRealHermesConnected: true
-    }
-  }
 })
 
 function normalizeModel(model: string): string {
@@ -206,4 +260,122 @@ function formatDateShort(dateStr: string): string {
   } catch {
     return dateStr
   }
+}
+
+/**
+ * 从 JSONL 文件中估算 token 数量
+ * 由于 JSONL 文件中没有准确的 token 信息，我们通过字符数估算
+ */
+interface JsonlTokenInfo {
+  id: string
+  inputTokens: number
+  outputTokens: number
+  model: string
+  platform: string
+  startedAt: number
+}
+
+async function estimateTokensFromJsonl(): Promise<JsonlTokenInfo[]> {
+  const hermesPath = getHermesPath()
+  const sessionsPath = path.join(hermesPath, 'sessions')
+  
+  if (!fs.existsSync(sessionsPath)) {
+    return []
+  }
+  
+  const files = fs.readdirSync(sessionsPath)
+    .filter(f => f.endsWith('.jsonl'))
+    .sort((a, b) => b.localeCompare(a))
+  
+  const results: JsonlTokenInfo[] = []
+  
+  for (const file of files) {
+    const filePath = path.join(sessionsPath, file)
+    const sessionId = file.replace('.jsonl', '')
+    
+    try {
+      const info = await parseJsonlTokens(filePath, sessionId)
+      if (info) {
+        results.push(info)
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+  
+  return results
+}
+
+async function parseJsonlTokens(filePath: string, sessionId: string): Promise<JsonlTokenInfo | null> {
+  return new Promise((resolve) => {
+    let totalChars = 0
+    let assistantChars = 0
+    let model = 'default'
+    let platform = 'cli'
+    let startedAt = 0
+    let firstLine = true
+    
+    const fileStream = fs.createReadStream(filePath)
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    })
+    
+    rl.on('line', (line) => {
+      if (!line.trim()) return
+      
+      try {
+        const data = JSON.parse(line)
+        
+        // 第一行通常是 session_meta
+        if (firstLine) {
+          firstLine = false
+          if (data.role === 'session_meta') {
+            platform = data.platform || 'cli'
+            model = data.model || 'default'
+          }
+        }
+        
+        // 提取时间戳
+        if (data.timestamp) {
+          const ts = new Date(data.timestamp).getTime() / 1000
+          if (!startedAt || ts < startedAt) startedAt = ts
+        }
+        
+        // 统计字符数
+        const content = data.content || ''
+        if (typeof content === 'string') {
+          totalChars += content.length
+        }
+        
+        if (data.role === 'assistant') {
+          assistantChars += typeof content === 'string' ? content.length : 0
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    })
+    
+    rl.on('close', () => {
+      fileStream.destroy()
+      
+      // 粗略估算：1 token ≈ 4 chars (中文/混合)
+      const inputTokens = Math.floor(totalChars / 4)
+      const outputTokens = Math.floor(assistantChars / 4)
+      
+      resolve({
+        id: sessionId,
+        inputTokens,
+        outputTokens,
+        model,
+        platform,
+        startedAt
+      })
+    })
+    
+    rl.on('error', () => {
+      fileStream.destroy()
+      resolve(null)
+    })
+  })
 }
