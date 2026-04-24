@@ -172,111 +172,33 @@ export default defineEventHandler(async (event) => {
     }
   }
   
-  // Mock data when not connected
+  // 无配置文件，返回默认配置
+  console.log('[config] No config.yaml found, returning defaults')
   return {
     model: {
-      provider: 'openrouter',
-      default: 'anthropic/claude-3.5-sonnet',
+      provider: '',
+      default: '',
       api_mode: 'openai'
     },
-    providers: {
-      openrouter: { name: 'OpenRouter', base_url: 'https://openrouter.ai/api/v1', key_env: 'OPENROUTER_API_KEY', api_mode: 'openai' },
-      openai: { name: 'OpenAI', base_url: 'https://api.openai.com/v1', key_env: 'OPENAI_API_KEY', api_mode: 'openai' },
-      anthropic: { name: 'Anthropic', base_url: 'https://api.anthropic.com', key_env: 'ANTHROPIC_API_KEY', api_mode: 'anthropic' },
-      ollama: { name: 'Ollama', base_url: 'http://localhost:11434', key_env: '', api_mode: 'ollama' },
-    },
+    providers: {},
     fallback_model: { provider: '', model: '' },
-    
-    agent: {
-      max_tokens: 8000,
-      max_turns: 90,
-      reasoning_effort: 'medium',
-      save_trajectories: false,
-      gateway_timeout: 1800,
-      verbose: false,
-    },
-    
+    agent: { max_tokens: 8000, max_turns: 90, reasoning_effort: 'medium', save_trajectories: false, gateway_timeout: 1800, verbose: false },
     streaming: { enabled: false },
-    
-    terminal: {
-      backend: 'local',
-      timeout: 180,
-      persistent_shell: true,
-      lifetime_seconds: 300,
-      container_cpu: 1,
-      container_memory: 5120,
-      container_disk: 51200,
-      container_persistent: true,
-      docker_image: 'nikolaik/python-nodejs:python3.11-nodejs20',
-    },
-    
-    logging: {
-      level: 'INFO',
-      max_size_mb: 5,
-      backup_count: 3,
-    },
-    
-    display: {
-      personality: 'helpful',
-      compact: false,
-      show_reasoning: false,
-      show_cost: false,
-      inline_diffs: true,
-      bell_on_complete: false,
-    },
-    
+    terminal: { backend: 'local', timeout: 180, persistent_shell: true, lifetime_seconds: 300, container_cpu: 1, container_memory: 5120, container_disk: 51200, container_persistent: true, docker_image: 'nikolaik/python-nodejs:python3.11-nodejs20' },
+    logging: { level: 'INFO', max_size_mb: 5, backup_count: 3 },
+    display: { personality: 'helpful', compact: false, show_reasoning: false, show_cost: false, inline_diffs: true, bell_on_complete: false },
     dashboard: { theme: 'default' },
-    
     tts: { provider: 'edge', voice: 'en-US-AriaNeural' },
     stt: { enabled: true, provider: 'local', local_model: 'base' },
-    
     mcp: { osv_scanning: true },
-    
-    security: {
-      redact_secrets: true,
-      tirith_enabled: true,
-    },
-    
+    security: { redact_secrets: true, tirith_enabled: true },
     privacy: { redact_pii: false },
-    
-    approvals: {
-      mode: 'manual',
-      timeout: 60,
-    },
-    
-    compression: {
-      enabled: true,
-      threshold: 0.5,
-      target_ratio: 0.2,
-      protect_last_n: 20,
-    },
-    
-    memory: {
-      memory_enabled: true,
-      user_profile_enabled: true,
-      memory_char_limit: 2200,
-    },
-    
-    checkpoints: {
-      enabled: true,
-      max_snapshots: 50,
-    },
-    
-    session_reset: {
-      mode: 'both',
-      idle_minutes: 1440,
-      at_hour: 4,
-    },
-    
-    auxiliary: {
-      vision: { provider: 'auto', model: '' },
-      web_extract: { provider: 'auto', model: '' },
-      compression: { provider: 'auto', model: '' },
-      session_search: { provider: 'auto', model: '' },
-      skills_hub: { provider: 'auto', model: '' },
-      title_generation: { provider: 'auto', model: '' },
-    },
-    
+    approvals: { mode: 'manual', timeout: 60 },
+    compression: { enabled: true, threshold: 0.5, target_ratio: 0.2, protect_last_n: 20 },
+    memory: { memory_enabled: true, user_profile_enabled: true, memory_char_limit: 2200 },
+    checkpoints: { enabled: true, max_snapshots: 50 },
+    session_reset: { mode: 'both', idle_minutes: 1440, at_hour: 4 },
+    auxiliary: {},
     isRealHermesConnected: false,
     configPath: null
   }

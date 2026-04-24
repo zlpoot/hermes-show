@@ -177,40 +177,8 @@ export default defineEventHandler(async (event) => {
       console.log('Error reading from real DB', e)
     }
   } else {
-    // Mock data
-    stats.todayTokens = '1.24M'
-    stats.totalSessions = 156
-    stats.todaySessions = 12
-    stats.cpuLoad = '18.4%'
-    stats.activeAgents = 4
-    stats.latency = '245ms'
-    stats.avgTokensPerSession = '8.5K'
-    
-    activeTasks = [
-      { id: '1', name: '数据备份到 S3', agent: 'sys-admin-01', platform: 'Background', time: '10:30 AM' },
-      { id: '2', name: '总结 GitHub Issues', agent: 'research-bot', platform: 'Telegram', time: '11:15 AM' },
-      { id: '3', name: '代码审查', agent: 'hermes-core', platform: 'Local', time: '11:42 AM' },
-    ]
-    
-    chartData = {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      datasets: [
-        {
-          label: 'Tokens',
-          data: [120000, 190000, 150000, 250000, 220000, 300000, 280000],
-          borderColor: '#10b981',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-          fill: true,
-          tension: 0.4
-        }
-      ]
-    }
-    
-    recentSessions = [
-      { id: '1', title: 'Introduction', platform: 'Local', time: '10:50 AM', tokens: 1250 },
-      { id: '2', title: 'Code Review', platform: 'Telegram', time: '09:30 AM', tokens: 8420 },
-      { id: '3', title: 'Bug Fix', platform: 'Local', time: 'Yesterday', tokens: 3560 },
-    ]
+    // 无数据库连接，返回空数据
+    console.log('[dashboard] No database connection')
   }
   
   return {

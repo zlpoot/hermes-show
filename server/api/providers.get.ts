@@ -160,44 +160,25 @@ export default defineEventHandler(async (event) => {
     }
   }
   
-  // Mock data fallback
+  // 无数据库连接，返回空数据
+  console.log('[providers] No database connection')
   return {
     summary: {
-      totalCalls: 1250,
-      successfulCalls: 1235,
-      failedCalls: 15,
-      successRate: 98.8,
-      avgResponseTime: 1250,
-      minResponseTime: 180,
-      maxResponseTime: 8500,
-      callsLast24h: 342,
-      activeProviders: 3,
-      activeModels: 5
+      totalCalls: 0,
+      successfulCalls: 0,
+      failedCalls: 0,
+      successRate: 100,
+      avgResponseTime: 0,
+      minResponseTime: 0,
+      maxResponseTime: 0,
+      callsLast24h: 0,
+      activeProviders: 0,
+      activeModels: 0
     },
-    providers: [
-      { provider: 'ctyun', model: 'GLM-5', calls: 520, successes: 518, failures: 2, successRate: 99.6, avgResponseTime: 980, p95ResponseTime: 2100, recentCalls: [] },
-      { provider: 'jdcloud', model: 'GLM-5', calls: 380, successes: 375, failures: 5, successRate: 98.7, avgResponseTime: 1450, p95ResponseTime: 3200, recentCalls: [] },
-      { provider: 'openai', model: 'gpt-4o-mini', calls: 200, successes: 198, failures: 2, successRate: 99.0, avgResponseTime: 850, p95ResponseTime: 1800, recentCalls: [] },
-      { provider: 'deepseek', model: 'deepseek-chat', calls: 150, successes: 144, failures: 6, successRate: 96.0, avgResponseTime: 1200, p95ResponseTime: 2800, recentCalls: [] }
-    ],
-    responseTimeDistribution: [
-      { label: '0-100ms', count: 45 },
-      { label: '100-500ms', count: 180 },
-      { label: '500ms-1s', count: 320 },
-      { label: '1-2s', count: 450 },
-      { label: '2-5s', count: 220 },
-      { label: '5-10s', count: 35 },
-      { label: '>10s', count: 10 }
-    ],
-    successRateTrend: Array.from({ length: 24 }, (_, i) => ({
-      hour: `${23 - i}:00`,
-      rate: 95 + Math.random() * 5,
-      calls: Math.floor(Math.random() * 20) + 5
-    })),
-    errors: [
-      { id: 'err-1', provider: 'deepseek', model: 'deepseek-chat', message: 'Connection timeout after 30s', time: '2026-04-19 16:30:45', sessionId: 'sess-abc123', responseTime: 30000 },
-      { id: 'err-2', provider: 'jdcloud', model: 'GLM-5', message: 'Rate limit exceeded', time: '2026-04-19 15:22:10', sessionId: 'sess-def456', responseTime: 150 }
-    ],
+    providers: [],
+    responseTimeDistribution: [],
+    successRateTrend: [],
+    errors: [],
     isRealHermesConnected: false
   }
 })

@@ -36,6 +36,9 @@ export default defineEventHandler(async (event) => {
     }
   }
   
-  // Mock response for demo
-  return { success: true, deleted: ids.length }
+  // 无数据库连接，返回错误
+  throw createError({
+    statusCode: 503,
+    message: 'Database not available'
+  })
 })

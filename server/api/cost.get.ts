@@ -31,7 +31,14 @@ export default defineEventHandler(async (event) => {
   const prisma = getHermesDB()
   
   if (!prisma) {
-    return getMockData()
+    console.log('[cost] No database connection')
+    return {
+      summary: { totalSessions: 0, totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, totalCost: 0, avgCostPerSession: 0 },
+      byModel: [],
+      byPlatform: [],
+      chartData: { labels: [], datasets: [] },
+      isRealHermesConnected: false
+    }
   }
   
   try {
@@ -162,7 +169,13 @@ export default defineEventHandler(async (event) => {
     }
   } catch (e) {
     console.error('[cost] Database query failed:', e)
-    return getMockData()
+    return {
+      summary: { totalSessions: 0, totalInputTokens: 0, totalOutputTokens: 0, totalTokens: 0, totalCost: 0, avgCostPerSession: 0 },
+      byModel: [],
+      byPlatform: [],
+      chartData: { labels: [], datasets: [] },
+      isRealHermesConnected: true
+    }
   }
 })
 
@@ -192,53 +205,5 @@ function formatDateShort(dateStr: string): string {
     return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
   } catch {
     return dateStr
-  }
-}
-
-function getMockData() {
-  const chartData = {
-    labels: ['4/13', '4/14', '4/15', '4/16', '4/17', '4/18', '4/19'],
-    datasets: [
-      {
-        label: '输入 Tokens',
-        data: [50000, 75000, 60000, 90000, 85000, 100000, 95000],
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: '输出 Tokens',
-        data: [30000, 45000, 38000, 55000, 50000, 65000, 60000],
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        fill: true,
-        tension: 0.4
-      }
-    ]
-  }
-  
-  return {
-    summary: {
-      totalSessions: 156,
-      totalInputTokens: 555000,
-      totalOutputTokens: 343000,
-      totalTokens: 898000,
-      totalCost: 12.45,
-      avgCostPerSession: 0.08
-    },
-    byModel: [
-      { model: 'deepseek-chat', sessions: 89, inputTokens: 320000, outputTokens: 180000, cost: 4.76, avgCostPerSession: 0.05 },
-      { model: 'gpt-4o', sessions: 34, inputTokens: 150000, outputTokens: 95000, cost: 5.75, avgCostPerSession: 0.17 },
-      { model: 'claude-3-sonnet', sessions: 23, inputTokens: 65000, outputTokens: 52000, cost: 1.69, avgCostPerSession: 0.07 },
-      { model: 'ctyun', sessions: 10, inputTokens: 20000, outputTokens: 16000, cost: 0.26, avgCostPerSession: 0.03 }
-    ],
-    byPlatform: [
-      { platform: 'weixin', sessions: 78, inputTokens: 280000, outputTokens: 170000, cost: 7.10 },
-      { platform: 'cli', sessions: 52, inputTokens: 185000, outputTokens: 120000, cost: 3.85 },
-      { platform: 'telegram', sessions: 26, inputTokens: 90000, outputTokens: 53000, cost: 1.50 }
-    ],
-    chartData,
-    isRealHermesConnected: false
   }
 }

@@ -54,8 +54,8 @@ export default defineEventHandler(async (event): Promise<GatewayResponse> => {
   const hasRealData = existsSync(gatewayStatePath)
   
   if (!hasRealData) {
-    // 返回 mock 数据
-    return getMockData()
+    // 无数据，返回空状态
+    return getEmptyData()
   }
   
   try {
@@ -115,7 +115,7 @@ export default defineEventHandler(async (event): Promise<GatewayResponse> => {
     }
   } catch (error) {
     console.error('Error reading gateway state:', error)
-    return getMockData()
+    return getEmptyData()
   }
 })
 
@@ -299,31 +299,14 @@ function getDirSize(path: string): string {
   }
 }
 
-function getMockData(): GatewayResponse {
+function getEmptyData(): GatewayResponse {
   return {
     status: 'offline',
     uptime: 'N/A',
     reconnectCount: 0,
     queueCapacity: 100,
-    connections: [
-      {
-        platform: 'wechat',
-        displayName: '微信',
-        accountId: 'N/A',
-        connected: false,
-        latency: 0,
-        messageCount: 0
-      },
-      {
-        platform: 'discord',
-        displayName: 'Discord',
-        accountId: 'N/A',
-        connected: false,
-        latency: 0,
-        messageCount: 0
-      }
-    ],
-    messageQueue: [] as MessageQueueItem[],
+    connections: [],
+    messageQueue: [],
     reconnectHistory: [],
     pairedUsers: [],
     pid: null,

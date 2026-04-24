@@ -54,7 +54,18 @@ export default defineEventHandler(async (event) => {
   const monthlyBudget = 100
   
   if (!prisma) {
-    return getMockData(monthlyBudget)
+    console.log('[budget] No database connection')
+    return {
+      isRealHermesConnected: false,
+      budget: { total: monthlyBudget, used: 0, remaining: monthlyBudget },
+      today: { cost: 0, tokens: 0 },
+      week: { cost: 0, avgDaily: 0 },
+      month: { cost: 0, change: 0 },
+      estimated: { cost: 0 },
+      providerCosts: [],
+      dailyTrend: [],
+      topUsers: []
+    }
   }
   
   try {
@@ -240,7 +251,17 @@ export default defineEventHandler(async (event) => {
     
   } catch (e) {
     console.error('Failed to query budget data', e)
-    return getMockData(monthlyBudget)
+    return {
+      isRealHermesConnected: true,
+      budget: { total: monthlyBudget, used: 0, remaining: monthlyBudget },
+      today: { cost: 0, tokens: 0 },
+      week: { cost: 0, avgDaily: 0 },
+      month: { cost: 0, change: 0 },
+      estimated: { cost: 0 },
+      providerCosts: [],
+      dailyTrend: [],
+      topUsers: []
+    }
   }
 })
 
@@ -264,18 +285,4 @@ function getProviderBarColor(name: string): string {
     'slack': 'bg-purple-400'
   }
   return colors[name] || 'bg-gray-400'
-}
-
-function getMockData(budget: number) {
-  return {
-    isRealHermesConnected: false,
-    budget: { total: budget, used: 0, remaining: budget },
-    today: { cost: 0, tokens: 0 },
-    week: { cost: 0, avgDaily: 0 },
-    month: { cost: 0, change: 0 },
-    estimated: { cost: 0 },
-    providerCosts: [],
-    dailyTrend: [],
-    topUsers: []
-  }
 }

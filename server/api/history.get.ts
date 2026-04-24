@@ -333,25 +333,15 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Mock data fallback
-  const mockSessions = [
-    { id: 'sess-a1b2', title: '项目结构重构建议', date: '2026-04-17 14:32', platform: 'CLI', platformDisplay: 'CLI', tokens: '4,210' },
-    { id: 'sess-c3d4', title: '配置 S3 每日自动备份', date: '2026-04-16 09:15', platform: 'Telegram', platformDisplay: 'Telegram', tokens: '1,504' },
-    { id: 'sess-e5f6', title: '生成并审核代码 PR', date: '2026-04-15 16:45', platform: 'GitHub', platformDisplay: 'GitHub', tokens: '8,920' },
-    { id: 'sess-g7h8', title: '查询服务器日志错误', date: '2026-04-15 10:20', platform: 'Discord', platformDisplay: 'Discord', tokens: '2,341' },
-  ]
-
+  // 无数据，返回空状态
+  console.log('[history] No data available')
   return {
-    sessions: mockSessions,
-    platforms: [
-      { id: 'cli', name: 'CLI', count: 15 },
-      { id: 'discord', name: 'Discord', count: 8 },
-      { id: 'telegram', name: 'Telegram', count: 5 },
-    ],
-    total: mockSessions.length,
+    sessions: [],
+    platforms: [],
+    total: 0,
     hasMore: false,
     isRealHermesConnected: false,
-    source: 'mock'
+    source: 'none'
   }
 })
 
