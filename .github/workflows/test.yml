@@ -51,6 +51,37 @@ jobs:
           
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Create test data directory
+        run: |
+          mkdir -p ~/.hermes/sessions
+          mkdir -p ~/.hermes/logs
+          # Create minimal notification_channels.json for testing
+          cat > ~/.hermes/notification_channels.json << 'EOF'
+          {
+            "version": 1,
+            "channels": [
+              {
+                "id": "test-channel",
+                "name": "Test Channel",
+                "platform": "discord",
+                "channel_id": "123456789",
+                "events": ["*"],
+                "enabled": true
+              }
+            ],
+            "event_types": {
+              "critical": ["system_down", "gateway_failed"],
+              "error": ["api_error", "task_failed"],
+              "warning": ["budget_warning", "rate_limit"],
+              "info": ["task_complete", "cron_complete"]
+            }
+          }
+          EOF
+          # Create empty notification_history.json
+          cat > ~/.hermes/notification_history.json << 'EOF'
+          []
+          EOF
         
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
