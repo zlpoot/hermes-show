@@ -2,8 +2,10 @@ import { test, expect } from '@playwright/test'
 
 test.describe('网关状态页面', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/gateway')
-    await page.waitForLoadState('networkidle')
+    // 使用 domcontentloaded 替代 networkidle，避免长时间等待
+    await page.goto('/gateway', { waitUntil: 'domcontentloaded' })
+    // 额外等待确保页面渲染
+    await page.waitForTimeout(500)
   })
   
   test('页面能正常加载', async ({ page }) => {
@@ -13,7 +15,7 @@ test.describe('网关状态页面', () => {
   
   test('网关状态显示', async ({ page }) => {
     await page.waitForTimeout(500)
-    const content = page.locator('body')
+    const content = page.getByRole('main')
     await expect(content).toBeVisible()
   })
   
