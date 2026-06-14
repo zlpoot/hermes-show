@@ -13,7 +13,7 @@
     </div>
     <div v-else class="bg-amber-500/10 text-amber-500 border border-amber-500/30 p-3 rounded-xl flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span class="text-sm font-medium">Mock 模式 (未检测到 ~/.hermes 目录)</span>
+        <span class="text-sm font-medium">未连接 Hermes Agent (未检测到 state.db)</span>
       </div>
     </div>
 
@@ -28,10 +28,6 @@
         </div>
         <div>
           <h3 class="text-2xl font-bold font-mono tracking-tight">{{ stat.value }}</h3>
-          <p v-if="stat.trend" class="text-xs mt-1" :class="stat.trend > 0 ? 'text-primary' : 'text-muted-foreground'">
-            <span v-if="stat.trend > 0">↑ {{ stat.trend }}%</span>
-            <span v-else-if="stat.trend < 0">↓ {{ Math.abs(stat.trend) }}%</span>
-          </p>
         </div>
       </div>
     </div>
@@ -212,7 +208,6 @@ const stats = computed(() => {
     { 
       title: '今日 Tokens', 
       value: d.todayTokens, 
-      trend: 12.5, 
       icon: Coins,
       iconBg: 'bg-amber-500/10',
       iconColor: 'text-amber-500'
@@ -220,7 +215,6 @@ const stats = computed(() => {
     { 
       title: '总会话数', 
       value: d.totalSessions, 
-      trend: 0, 
       icon: Users,
       iconBg: 'bg-blue-500/10',
       iconColor: 'text-blue-500'
@@ -228,7 +222,6 @@ const stats = computed(() => {
     { 
       title: '今日会话', 
       value: d.todaySessions, 
-      trend: 8.3, 
       icon: Calendar,
       iconBg: 'bg-cyan-500/10',
       iconColor: 'text-cyan-500'
@@ -236,7 +229,6 @@ const stats = computed(() => {
     { 
       title: 'CPU 负载', 
       value: d.cpuLoad, 
-      trend: -2.1, 
       icon: Cpu,
       iconBg: 'bg-primary/10',
       iconColor: 'text-primary'
@@ -244,7 +236,6 @@ const stats = computed(() => {
     { 
       title: '活跃 Agent', 
       value: d.activeAgents, 
-      trend: 0, 
       icon: Network,
       iconBg: 'bg-secondary/10',
       iconColor: 'text-secondary'
@@ -252,7 +243,6 @@ const stats = computed(() => {
     { 
       title: 'API 延迟', 
       value: d.latency, 
-      trend: -15.4, 
       icon: Zap,
       iconBg: 'bg-purple-500/10',
       iconColor: 'text-purple-500'
