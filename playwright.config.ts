@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000'
+const hermesPath = process.env.NUXT_HERMES_PATH || './tests/fixtures/hermes-history'
+const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'pnpm dev'
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -9,7 +13,7 @@ export default defineConfig({
   reporter: 'html',
   timeout: 60000,
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 30000,
@@ -22,8 +26,8 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
+    command: `NUXT_HERMES_PATH=${hermesPath} ${webServerCommand}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000
   }

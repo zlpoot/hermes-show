@@ -92,7 +92,7 @@ test.describe('通知设置页面', () => {
     await page.waitForTimeout(300)
     
     // 检查弹窗标题
-    const modalTitle = page.getByText('添加渠道')
+    const modalTitle = page.getByRole('heading', { name: '添加渠道' })
     await expect(modalTitle).toBeVisible()
     
     // 检查表单字段
