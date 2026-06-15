@@ -107,6 +107,39 @@ export const getHermesDB = () => {
 }
 
 /**
+ * 获取 Hermes 日志目录下的所有 .log 文件，按最后修改时间降序排列
+ * 返回空数组表示日志目录不存在或无 .log 文件
+ */
+export const getHermesLogFiles = (): string[] => {
+  const hermesPath = getHermesPath()
+  if (!hermesPath || !fs.existsSync(hermesPath)) return []
+  const logsDir = path.join(hermesPath, 'logs')
+  if (!fs.existsSync(logsDir)) return []
+  try {
+    return fs.readdirSync(logsDir)
+      .filter(f => f.endsWith('.log'))
+      .map(f => ({ name: f, mtime: fs.statSync(path.join(logsDir, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime)
+      .map(f => f.name)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 检查 Hermes 连接状态
+ */
+export type HermesStatus = 'ok' | 'empty' | 'no-hermes' | 'no-logs-dir' | 'read-error'
+
+export const getHermesStatus = (): HermesStatus => {
+  const hermesPath = getHermesPath()
+  if (!hermesPath || !fs.existsSync(hermesPath)) return 'no-hermes'
+  const logsDir = path.join(hermesPath, 'logs')
+  if (!fs.existsSync(logsDir)) return 'no-logs-dir'
+  return 'ok'
+}
+
+/**
  * 获取 Hermes 日志内容
  */
 export const getHermesLogs = (filename: string, linesCount: number = 100) => {
