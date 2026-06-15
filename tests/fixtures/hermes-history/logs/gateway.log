@@ -1,0 +1,10 @@
+2026-06-15 06:00:02,000 INFO Gateway: HTTP server listening on 0.0.0.0:18789
+2026-06-15 06:00:10,000 INFO Gateway: WebSocket endpoint ready
+2026-06-15 06:01:10,000 WARN Gateway: Rate limit approaching for OpenRouter API
+2026-06-15 06:02:30,000 INFO Gateway: Request from model deepseek-chat completed in 2.3s
+2026-06-15 06:03:45,000 INFO Gateway: Request from model claude-3-sonnet completed in 1.8s
+2026-06-15 06:05:00,000 WARN Gateway: Rate limit reset in 45s
+2026-06-15 06:06:00,000 INFO Gateway: New client connected from 192.0.2.10
+2026-06-15 06:07:30,000 INFO Gateway: Client 192.0.2.10 disconnected
+2026-06-15 06:08:00,000 ERROR Gateway: Upstream timeout for model gpt-4o
+2026-06-15 06:09:15,000 INFO Gateway: Retry succeeded for gpt-4o request

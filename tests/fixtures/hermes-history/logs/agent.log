@@ -1,0 +1,20 @@
+2026-06-15 06:00:00,000 INFO Core: Application started
+2026-06-15 06:00:01,000 INFO Core: Loading configuration
+2026-06-15 06:00:02,000 INFO Gateway: HTTP server listening on 0.0.0.0:18789
+2026-06-15 06:00:03,000 INFO Telegram: Bot connected
+2026-06-15 06:00:10,000 INFO Cron: Starting daily job scheduler
+2026-06-15 06:01:00,000 INFO Memory: Loading skill definitions
+2026-06-15 06:01:05,000 INFO MCP: Connecting to weather server
+2026-06-15 06:01:10,000 WARN Gateway: Rate limit approaching for OpenRouter API
+2026-06-15 06:01:15,000 INFO Cron: Job "Daily Backup" completed
+2026-06-15 06:02:00,000 SUCCESS Memory: Skill loaded from session history
+2026-06-15 06:02:30,000 ERROR MCP: Failed to connect to weather server
+2026-06-15 06:03:00,000 DEBUG Agent: Evaluating tool response
+2026-06-15 06:03:01,000 INFO Telegram: Received new message from user @admin
+2026-06-15 06:03:05,000 WARN Database: Connection pool at 80% capacity
+2026-06-15 06:04:00,000 INFO Core: Health check passed
+2026-06-15 06:04:30,000 DEBUG Agent: Processing tool response
+2026-06-15 06:05:00,000 SUCCESS Schedule: Daily analysis complete
+2026-06-15 06:05:15,000 ERROR Database: Query timeout after 30s
+2026-06-15 06:06:00,000 INFO Gateway: New client connected from 192.0.2.10
+2026-06-15 06:07:00,000 INFO Cron: Job "Memory Consolidation" running

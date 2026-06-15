@@ -75,7 +75,8 @@ say ""
 say "== Generated artifacts =="
 generated_files="$(
   printf '%s\n' "$changed_files" \
-    | grep -E '(^|/)(node_modules|\.nuxt|\.output|coverage|playwright-report|test-results|logs)(/|$)' || true
+    | grep -E '(^|/)(node_modules|\.nuxt|\.output|coverage|playwright-report|test-results|logs)(/|$)' \
+    | grep -Ev '^tests/fixtures/.*/logs/' || true
 )"
 if [ -n "$generated_files" ]; then
   fail "Generated artifacts are present in git status:"

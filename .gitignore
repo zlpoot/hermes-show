@@ -12,6 +12,8 @@ node_modules
 # Logs
 logs
 *.log
+!tests/fixtures/**/logs/
+!tests/fixtures/**/logs/*.log
 
 # Test/build artifacts
 coverage
