@@ -193,7 +193,7 @@
           <div class="flex items-center gap-2" v-if="currentSession">
             <span class="text-xs px-2 py-1 bg-background border border-card-border rounded-md text-muted-foreground">Tokens: {{ currentSession.tokens }}</span>
             <div class="relative">
-              <button @click="showExportMenu = !showExportMenu" class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
+              <button aria-label="导出会话" @click="showExportMenu = !showExportMenu" class="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground">
                 <Download :size="16" />
               </button>
               <div v-if="showExportMenu" class="absolute right-0 top-full mt-1 bg-card border border-card-border rounded-lg shadow-lg py-1 min-w-[140px] z-10">

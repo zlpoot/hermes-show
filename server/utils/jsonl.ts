@@ -25,8 +25,8 @@ export interface JsonlSessionMeta {
  */
 export interface JsonlMessage {
   role: 'session_meta' | 'user' | 'assistant' | 'tool'
-  content?: string
-  timestamp?: string
+  content?: unknown
+  timestamp?: string | number
   model?: string
   platform?: string
   tool_name?: string
@@ -35,6 +35,68 @@ export interface JsonlMessage {
   reasoning?: string
   finish_reason?: string
   tools?: any[]
+  input_tokens?: number
+  output_tokens?: number
+  usage?: {
+    input_tokens?: number
+    output_tokens?: number
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+  }
+  token_usage?: {
+    input_tokens?: number
+    output_tokens?: number
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+  }
+}
+
+export const parseJsonlTimestamp = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 10000000000 ? value * 1000 : value
+  }
+
+  if (typeof value !== 'string' || !value.trim()) return undefined
+
+  const numericValue = Number(value)
+  if (Number.isFinite(numericValue)) {
+    return numericValue < 10000000000 ? numericValue * 1000 : numericValue
+  }
+
+  const parsed = new Date(value).getTime()
+  return Number.isNaN(parsed) ? undefined : parsed
+}
+
+export const normalizeJsonlContent = (content: unknown): string => {
+  if (typeof content === 'string') return content
+  if (content === null || content === undefined) return ''
+
+  try {
+    return JSON.stringify(content)
+  } catch {
+    return String(content)
+  }
+}
+
+export const getJsonlTokenCounts = (message: JsonlMessage): { input: number; output: number } => {
+  const usage = message.usage || message.token_usage || {}
+  const input = Number(message.input_tokens ?? usage.input_tokens ?? usage.prompt_tokens ?? 0)
+  const output = Number(message.output_tokens ?? usage.output_tokens ?? usage.completion_tokens ?? 0)
+
+  if ((input || output) || !usage.total_tokens) {
+    return {
+      input: Number.isFinite(input) ? input : 0,
+      output: Number.isFinite(output) ? output : 0
+    }
+  }
+
+  const total = Number(usage.total_tokens)
+  return {
+    input: Number.isFinite(total) ? total : 0,
+    output: 0
+  }
 }
 
 /**
@@ -63,7 +125,6 @@ export const listJsonlSessions = async (): Promise<JsonlSessionMeta[]> => {
 
   for (const file of files) {
     const filePath = path.join(sessionsPath, file)
-    const stat = fs.statSync(filePath)
     
     // 从文件名提取 session ID: 20260424_000440_e5ee13d4.jsonl -> 20260424_000440_e5ee13d4
     const sessionId = file.replace('.jsonl', '')
@@ -93,8 +154,9 @@ export const parseJsonlSessionMeta = async (
       crlfDelay: Infinity
     })
 
-    let firstLine = true
     let messageCount = 0
+    let inputTokens = 0
+    let outputTokens = 0
     let meta: Partial<JsonlSessionMeta> = {
       id: sessionId,
       file_path: filePath,
@@ -111,31 +173,37 @@ export const parseJsonlSessionMeta = async (
       
       try {
         const data: JsonlMessage = JSON.parse(line)
-        messageCount++
 
-        // 第一行通常是 session_meta
-        if (firstLine) {
-          firstLine = false
-          if (data.role === 'session_meta') {
-            meta.platform = data.platform
-            meta.model = data.model
-          }
+        if (data.platform && !meta.platform) {
+          meta.platform = data.platform
+        }
+        if (data.model && !meta.model) {
+          meta.model = data.model
         }
 
         // 提取时间戳
         if (data.timestamp) {
-          const ts = new Date(data.timestamp).getTime()
-          if (!startedAt || ts < startedAt) startedAt = ts
-          if (!endedAt || ts > endedAt) endedAt = ts
+          const ts = parseJsonlTimestamp(data.timestamp)
+          if (ts !== undefined) {
+            if (!startedAt || ts < startedAt) startedAt = ts
+            if (!endedAt || ts > endedAt) endedAt = ts
+          }
         }
+
+        const tokenCounts = getJsonlTokenCounts(data)
+        inputTokens += tokenCounts.input
+        outputTokens += tokenCounts.output
+
+        if (data.role === 'session_meta') {
+          continue
+        }
+
+        messageCount++
 
         // 提取第一条用户消息作为标题
         if (data.role === 'user' && !firstUserContent && data.content) {
-          firstUserContent = data.content.slice(0, 100)
+          firstUserContent = normalizeJsonlContent(data.content).slice(0, 100)
         }
-
-        // 统计 token（如果有）
-        // TODO: 从消息中提取 token 信息
 
       } catch (e) {
         // 忽略解析错误
@@ -148,6 +216,8 @@ export const parseJsonlSessionMeta = async (
     meta.message_count = messageCount
     meta.started_at = startedAt
     meta.ended_at = endedAt
+    meta.input_tokens = inputTokens
+    meta.output_tokens = outputTokens
     meta.title = firstUserContent || `Session ${sessionId}`
 
     return meta as JsonlSessionMeta
@@ -165,14 +235,15 @@ export const readJsonlSession = async (sessionId: string): Promise<{
   messages: JsonlMessage[]
 } | null> => {
   const sessionsPath = getJsonlSessionsPath()
-  const filePath = path.join(sessionsPath, `${sessionId}.jsonl`)
+  const safeSessionId = path.basename(sessionId)
+  const filePath = path.join(sessionsPath, `${safeSessionId}.jsonl`)
 
   if (!fs.existsSync(filePath)) {
     console.log('[jsonl] Session file not found:', filePath)
     return null
   }
 
-  const meta = await parseJsonlSessionMeta(filePath, sessionId)
+  const meta = await parseJsonlSessionMeta(filePath, safeSessionId)
   if (!meta) return null
 
   const fileStream = fs.createReadStream(filePath)
@@ -190,7 +261,10 @@ export const readJsonlSession = async (sessionId: string): Promise<{
       const data: JsonlMessage = JSON.parse(line)
       // 跳过 session_meta 行
       if (data.role !== 'session_meta') {
-        messages.push(data)
+        messages.push({
+          ...data,
+          content: normalizeJsonlContent(data.content)
+        })
       }
     } catch (e) {
       // 忽略解析错误

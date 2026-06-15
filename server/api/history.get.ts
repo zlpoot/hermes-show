@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { getHermesDB, getHermesPath } from '../utils/hermes'
-import { listJsonlSessions, readJsonlSession, searchJsonlSessions } from '../utils/jsonl'
+import { listJsonlSessions, normalizeJsonlContent, readJsonlSession, searchJsonlSessions } from '../utils/jsonl'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -57,7 +57,7 @@ export default defineEventHandler(async (event) => {
         },
         messages: messages.map(m => ({
           role: m.role,
-          content: m.content || '',
+          content: normalizeJsonlContent(m.content),
           tool_name: m.tool_name,
           tool_call_id: m.tool_call_id,
           timestamp: m.timestamp,
@@ -151,9 +151,14 @@ export default defineEventHandler(async (event) => {
     // 从 JSONL 文件读取
     console.log('[history] Loading from JSONL files')
     
+    const allJsonlSessions = await listJsonlSessions()
+    if (allJsonlSessions.length === 0) {
+      throw new Error('No JSONL sessions found')
+    }
+
     let jsonlSessions = searchQuery 
       ? await searchJsonlSessions(searchQuery)
-      : await listJsonlSessions()
+      : allJsonlSessions
     
     // 应用过滤器
     if (platform) {
@@ -179,8 +184,9 @@ export default defineEventHandler(async (event) => {
       }))
       .sort((a, b) => b.count - a.count)
 
-    // 分页
     const totalCount = jsonlSessions.length
+
+    // 分页
     const pagedSessions = jsonlSessions.slice(offset, offset + limit)
     
     return {
