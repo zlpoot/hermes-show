@@ -181,6 +181,9 @@
             <p v-if="data?.gatewayStatus?.running" class="text-sm text-muted-foreground">
               PID: {{ data?.gatewayStatus?.pid }} · 运行时间: {{ data?.gatewayStatus?.uptime }}
             </p>
+            <p v-else-if="data?.gatewayStatus?.message" class="text-sm text-muted-foreground">
+              {{ data.gatewayStatus.message }}
+            </p>
           </div>
         </div>
         <div v-if="data?.gatewayStatus?.running" class="flex items-center gap-2 text-primary">
