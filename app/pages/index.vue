@@ -319,7 +319,7 @@ const chartJsData = computed(() => {
   }
 })
 
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   interaction: { mode: 'index' as const, intersect: false },
@@ -352,7 +352,7 @@ const chartOptions = {
       },
     },
   },
-}
+}))
 
 // ── 工具函数 ───────────────────────────────
 

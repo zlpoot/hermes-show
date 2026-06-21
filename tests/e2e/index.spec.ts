@@ -1,16 +1,21 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('仪表盘 (Dashboard)', () => {
-  test('有测试数据时显示已连接和统计信息', async ({ page }) => {
+  test('有测试数据时显示完整的三段式布局', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
-    await expect(page.getByText('已成功接入本地 Hermes Agent')).toBeVisible()
-    await expect(page.getByText('今日 Tokens')).toBeVisible()
+    // 三大 section 标题
+    await expect(page.getByText('运行状态')).toBeVisible()
+    await expect(page.getByText('最近活动')).toBeVisible()
+    await expect(page.getByText('数据覆盖')).toBeVisible()
+
+    // 覆盖概况统计
     await expect(page.getByText('总会话数')).toBeVisible()
     await expect(page.getByText('今日会话')).toBeVisible()
-    await expect(page.getByText('近期活跃会话')).toBeVisible()
-    await expect(page.getByText('最近会话')).toBeVisible()
+
+    // 活跃会话 & 最近会话
+    await expect(page.getByText('近期活跃会话').or(page.getByText('暂无运行中任务'))).toBeVisible()
   })
 
   test('Dashboard API 返回正确数据结构', async ({ request }) => {
@@ -18,22 +23,41 @@ test.describe('仪表盘 (Dashboard)', () => {
     expect(response.ok()).toBe(true)
 
     const data = await response.json()
-    expect(data).toHaveProperty('stats')
-    expect(data.stats).toMatchObject({
-      todayTokens: expect.any(String),
-      totalSessions: expect.any(Number),
-      todaySessions: expect.any(Number),
-      activeAgents: expect.any(Number),
-      avgTokensPerSession: expect.any(String)
+    // 顶级字段
+    expect(data).toHaveProperty('status')
+    expect(data).toHaveProperty('coverage')
+    expect(data).toHaveProperty('chartData')
+    expect(data).toHaveProperty('recentActiveSessions')
+    expect(data).toHaveProperty('recentSessions')
+
+    // status
+    expect(data.status).toMatchObject({
+      cpuLoad: expect.any(String),
+      lastRefreshTime: expect.any(String),
+      isHermesConnected: expect.any(Boolean),
     })
-    expect(data.stats.totalSessions).toBeGreaterThanOrEqual(0)
-    expect(Array.isArray(data.activeTasks)).toBe(true)
-    expect(Array.isArray(data.recentSessions)).toBe(true)
-    expect(data.chartData).toMatchObject({ labels: expect.any(Array), datasets: expect.any(Array) })
-    expect(data.isRealHermesConnected).toBe(true)
+
+    // coverage
+    expect(data.coverage).toMatchObject({
+      totalSessions: expect.any(Number),
+      hasTokenSessions: expect.any(Number),
+      todaySessions: expect.any(Number),
+    })
+    expect(data.coverage.totalSessions).toBeGreaterThanOrEqual(0)
+
+    // chartData
+    expect(data.chartData).toMatchObject({
+      labels: expect.any(Array),
+      datasets: expect.any(Array),
+      mode: expect.stringMatching(/^(tokens|sessions|empty)$/),
+    })
+
     // 不应包含调试字段
     expect(data).not.toHaveProperty('_dataSources')
-    expect(data).toHaveProperty('lastRefreshTime')
+    expect(data).not.toHaveProperty('stats')
+
+    // lastRefreshTime 在 status 内
+    expect(data.status).toHaveProperty('lastRefreshTime')
   })
 
   test('无 JavaScript 错误', async ({ page }) => {

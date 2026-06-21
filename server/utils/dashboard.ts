@@ -172,9 +172,9 @@ export function buildDashboardData(
     }
   } else if (sessionTrendByDate.size > 0) {
     chartMode = 'sessions'
-    chartNote = hasRecentActivity
-      ? '当前数据源无 token 记录，展示会话数趋势'
-      : '近 30 天无会话记录'
+    // 这里有 30 天内的数据（sessionTrendByDate.size > 0），只是无 token 记录
+    // 因此不应出现 "近 30 天无会话记录" 的矛盾提示
+    chartNote = '当前数据源无 token 记录，展示会话数趋势'
     const entries = Array.from(sessionTrendByDate.entries()).sort(([a], [b]) => a.localeCompare(b))
     chartData = {
       labels: entries.map(([d]) => formatLocalDateLabel(d)),
