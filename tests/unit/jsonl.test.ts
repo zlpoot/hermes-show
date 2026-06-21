@@ -5,10 +5,14 @@ import path from 'node:path'
 import {
   getJsonlSessionsPath,
   getJsonlTokenCounts,
+  listAllFileSessions,
+  listJsonSessions,
   listJsonlSessions,
   normalizeJsonlContent,
+  parseJsonSessionMeta,
   parseJsonlSessionMeta,
   parseJsonlTimestamp,
+  readFileSession,
   readJsonlSession,
   searchJsonlSessions
 } from '../../server/utils/jsonl'
@@ -25,6 +29,15 @@ const writeSession = (id: string, lines: unknown[]) => {
   fs.writeFileSync(
     path.join(sessionsPath, `${id}.jsonl`),
     lines.map((line) => typeof line === 'string' ? line : JSON.stringify(line)).join('\n')
+  )
+}
+
+const writeJsonSession = (id: string, data: Record<string, unknown>) => {
+  const sessionsPath = path.join(hermesPath, 'sessions')
+  fs.mkdirSync(sessionsPath, { recursive: true })
+  fs.writeFileSync(
+    path.join(sessionsPath, `session_${id}.json`),
+    JSON.stringify({ session_id: id, ...data })
   )
 }
 
@@ -121,5 +134,92 @@ describe('jsonl 工具函数', () => {
 
     const contentResults = await searchJsonlSessions('beta')
     expect(contentResults.map((session) => session.id)).toEqual(['session_b'])
+  })
+
+  it('读取新版 session_*.json 会话并统计 token 和时间', async () => {
+    writeJsonSession('20260621_110050_slack', {
+      platform: 'slack',
+      model: 'gpt-test',
+      session_start: '2026-06-21T11:00:50.000Z',
+      last_updated: '2026-06-21T11:07:12.000Z',
+      messages: [
+        { role: 'user', content: '最近 slack 对话', timestamp: '2026-06-21T11:00:51.000Z', usage: { prompt_tokens: 9 } },
+        { role: 'assistant', content: '已经记录', timestamp: '2026-06-21T11:00:52.000Z', usage: { completion_tokens: 5 } }
+      ]
+    })
+
+    const meta = await parseJsonSessionMeta(
+      path.join(hermesPath, 'sessions', 'session_20260621_110050_slack.json'),
+      '20260621_110050_slack'
+    )
+
+    expect(meta).toMatchObject({
+      id: '20260621_110050_slack',
+      title: '最近 slack 对话',
+      platform: 'slack',
+      model: 'gpt-test',
+      message_count: 2,
+      input_tokens: 9,
+      output_tokens: 5,
+      storage: 'json'
+    })
+    expect(meta?.started_at).toBe(1782039650000)
+    expect(meta?.ended_at).toBe(1782040032000)
+
+    const detail = await readFileSession('20260621_110050_slack')
+    expect(detail?.messages.map((message) => message.content)).toEqual(['最近 slack 对话', '已经记录'])
+  })
+
+  it('从 sessions.json 索引补充没有详情文件的近期 Slack 会话', async () => {
+    const sessionsPath = path.join(hermesPath, 'sessions')
+    fs.mkdirSync(sessionsPath, { recursive: true })
+    fs.writeFileSync(path.join(sessionsPath, 'sessions.json'), JSON.stringify({
+      'agent:main:slack:group:C123:1782010847.612309': {
+        session_id: '20260621_110050_index_only',
+        platform: 'slack',
+        display_name: 'C123',
+        created_at: '2026-06-21T11:00:50.000Z',
+        updated_at: '2026-06-21T11:07:12.000Z',
+        expiry_finalized: false
+      }
+    }))
+
+    const sessions = await listJsonSessions()
+
+    expect(sessions).toHaveLength(1)
+    expect(sessions[0]).toMatchObject({
+      id: '20260621_110050_index_only',
+      title: 'C123',
+      platform: 'slack',
+      started_at: 1782039650000,
+      ended_at: undefined,
+      storage: 'json'
+    })
+  })
+
+  it('合并旧 JSONL 和新版 JSON 会话并按最近时间排序', async () => {
+    writeSession('20260527_161904_old', [
+      { role: 'session_meta', platform: 'discord', timestamp: '2026-05-27T16:19:04.000Z' },
+      { role: 'user', content: 'old discord', timestamp: '2026-05-27T16:19:05.000Z' }
+    ])
+    writeJsonSession('20260621_114841_slack', {
+      platform: 'slack',
+      session_start: '2026-06-21T11:48:41.000Z',
+      last_updated: '2026-06-21T11:56:00.000Z',
+      messages: [
+        { role: 'user', content: 'new slack', timestamp: '2026-06-21T11:48:42.000Z' }
+      ]
+    })
+
+    const sessions = await listAllFileSessions()
+
+    expect(sessions.map((session) => session.id)).toEqual([
+      '20260621_114841_slack',
+      '20260527_161904_old'
+    ])
+    expect(sessions[0].platform).toBe('slack')
+
+    const searchResults = await searchJsonlSessions('new slack')
+    expect(searchResults.map((session) => session.id)).toEqual(['20260621_114841_slack'])
   })
 })
