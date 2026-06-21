@@ -7,7 +7,6 @@ export interface DashboardStats {
   todaySessions: number
   cpuLoad: string
   activeAgents: number
-  latency: string
   avgTokensPerSession: string
 }
 
@@ -31,6 +30,8 @@ export interface DashboardData {
       tension: number
     }>
   }
+  /** 当无 token 数据时，改用会话数趋势 */
+  chartFallbackNote?: string
   recentSessions: Array<{
     id: string
     title: string
@@ -38,17 +39,12 @@ export interface DashboardData {
     time: string
     tokens: number
   }>
-  /** 数据源统计，前端可展示 "来源：JSONL 46，SQLite 6" */
-  _sources?: {
-    jsonl: number
-    sqlite: number
-    merged: number
-  }
+  /** 页面数据最后刷新时间（ISO 格式） */
+  lastRefreshTime: string
 }
 
 export function createEmptyDashboardData(
   cpuLoad = '0%',
-  latency = '0ms'
 ): DashboardData {
   return {
     stats: {
@@ -57,18 +53,18 @@ export function createEmptyDashboardData(
       todaySessions: 0,
       cpuLoad,
       activeAgents: 0,
-      latency,
       avgTokensPerSession: '0'
     },
     activeTasks: [],
     chartData: { labels: [], datasets: [] },
-    recentSessions: []
+    recentSessions: [],
+    lastRefreshTime: new Date().toISOString()
   }
 }
 
 export function buildDashboardData(
   sessions: UnifiedSession[],
-  options: { now?: Date; cpuLoad?: string; latency?: string; sources?: { jsonl: number; sqlite: number; merged: number } } = {}
+  options: { now?: Date; cpuLoad?: string; sources?: { jsonl: number; sqlite: number; merged: number } } = {}
 ): DashboardData {
   const now = options.now ?? new Date()
   const nowMs = now.getTime()
@@ -95,34 +91,49 @@ export function buildDashboardData(
   // 活跃会话：使用时间窗口定义（5 小时内开始且未结束）
   const activeRows = sorted.filter(s => isActiveSession(s, nowMs))
 
+  const totalAllTokens = tokenRows.length > 0
+    ? sumTokens(tokenRows)
+    : 0
+
   const stats: DashboardStats = {
     todayTokens: formatTokens(sumTokens(todaySessions)),
     totalSessions: sorted.length,
     todaySessions: todaySessions.length,
     cpuLoad: options.cpuLoad ?? '0%',
     activeAgents: activeRows.length,
-    latency: options.latency ?? '0ms',
     avgTokensPerSession: tokenRows.length > 0
-      ? formatTokens(sumTokens(tokenRows) / tokenRows.length)
+      ? formatTokens(totalAllTokens / tokenRows.length)
       : '0'
   }
 
-  // Token 趋势（近 7 天）
-  const trendByDate = new Map<string, number>()
+  // Token 趋势（近 7 天）— 如果全部为 0，改为会话数趋势
+  const tokenTrendByDate = new Map<string, number>()
+  const sessionTrendByDate = new Map<string, number>()
+  let hasTokenData = false
+
   for (const session of sorted) {
     if (!session.started_at) continue
     if (session.started_at < sevenDaysAgo.getTime() || session.started_at > nowMs) continue
     const key = toLocalDateKey(new Date(session.started_at))
-    trendByDate.set(key, (trendByDate.get(key) ?? 0) + session.input_tokens + session.output_tokens)
+    const tokens = session.input_tokens + session.output_tokens
+    if (tokens > 0) hasTokenData = true
+    tokenTrendByDate.set(key, (tokenTrendByDate.get(key) ?? 0) + tokens)
+    sessionTrendByDate.set(key, (sessionTrendByDate.get(key) ?? 0) + 1)
   }
 
-  const trendEntries = Array.from(trendByDate.entries()).sort(([a], [b]) => a.localeCompare(b))
+  let chartFallbackNote: string | undefined
+  const trendMap = hasTokenData ? tokenTrendByDate : sessionTrendByDate
+  if (!hasTokenData && sessionTrendByDate.size > 0) {
+    chartFallbackNote = '当前数据源无 token 记录，展示会话数趋势'
+  }
+
+  const trendEntries = Array.from(trendMap.entries()).sort(([a], [b]) => a.localeCompare(b))
   const chartData = trendEntries.length > 0
     ? {
         labels: trendEntries.map(([date]) => formatDate(date)),
         datasets: [
           {
-            label: 'Tokens',
+            label: hasTokenData ? 'Tokens' : '会话数',
             data: trendEntries.map(([, total]) => total),
             borderColor: '#10b981',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -143,6 +154,7 @@ export function buildDashboardData(
       time: formatTime(session.started_at == null ? null : String(session.started_at))
     })),
     chartData,
+    chartFallbackNote,
     recentSessions: sorted.slice(0, 5).map(session => ({
       id: session.id,
       title: session.title || 'Unnamed Session',
@@ -150,7 +162,7 @@ export function buildDashboardData(
       time: formatTime(session.started_at == null ? null : String(session.started_at)),
       tokens: session.input_tokens + session.output_tokens
     })),
-    _sources: options.sources
+    lastRefreshTime: now.toISOString()
   }
 }
 

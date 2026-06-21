@@ -41,8 +41,11 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@parcel/watcher",
       "@prisma/client",
       "@prisma/engines",
+      "better-sqlite3",
+      "esbuild",
       "prisma"
     ]
   }

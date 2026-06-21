@@ -5,7 +5,6 @@ import os from 'node:os'
 
 export default defineEventHandler(async (event) => {
   let cpuLoad = '0%'
-  let latency = '0ms'
 
   try {
     const cpus = os.cpus()
@@ -23,20 +22,18 @@ export default defineEventHandler(async (event) => {
     // 统一加载 JSONL + SQLite 会话
     const { sessions, sources } = await loadAllSessions()
 
-    const dashboardData = buildDashboardData(sessions, { cpuLoad, latency, sources })
+    const dashboardData = buildDashboardData(sessions, { cpuLoad, sources })
 
     return {
       ...dashboardData,
       isRealHermesConnected: sources.jsonl > 0 || sources.sqlite > 0,
-      _dataSources: sources,
     }
   } catch (e) {
-    console.log('[dashboard] Error loading data', e)
+    console.error('[dashboard] Error loading data', e)
   }
 
   return {
-    ...createEmptyDashboardData(cpuLoad, latency),
+    ...createEmptyDashboardData(cpuLoad),
     isRealHermesConnected: false,
-    _dataSources: { jsonl: 0, sqlite: 0, merged: 0 },
   }
 })

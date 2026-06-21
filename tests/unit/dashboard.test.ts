@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildDashboardData } from '../../server/utils/dashboard'
+import { buildDashboardData, createEmptyDashboardData } from '../../server/utils/dashboard'
 import { isActiveSession, type UnifiedSession } from '../../server/utils/sessions'
 import { formatTokens, formatTime, formatDate } from '../../server/utils/formatters'
 
@@ -109,6 +109,27 @@ describe('dashboard formatters', () => {
   })
 })
 
+describe('createEmptyDashboardData', () => {
+  it('returns stable empty dashboard data', () => {
+    const data = createEmptyDashboardData('11%')
+
+    expect(data.stats).toMatchObject({
+      todayTokens: '0',
+      totalSessions: 0,
+      todaySessions: 0,
+      cpuLoad: '11%',
+      activeAgents: 0,
+      avgTokensPerSession: '0'
+    })
+    expect(data.activeTasks).toEqual([])
+    expect(data.chartData.labels).toEqual([])
+    expect(data.recentSessions).toEqual([])
+    expect(data.lastRefreshTime).toBeDefined()
+    // 不应包含调试字段
+    expect(data).not.toHaveProperty('_sources')
+  })
+})
+
 describe('buildDashboardData', () => {
   const now = new Date('2026-06-14T12:00:00')
   const nowMs = now.getTime()
@@ -122,7 +143,7 @@ describe('buildDashboardData', () => {
   }
 
   it('returns stable empty dashboard data', () => {
-    const data = buildDashboardData([], { now, cpuLoad: '11%', latency: '7ms' })
+    const data = buildDashboardData([], { now, cpuLoad: '11%' })
 
     expect(data.stats).toMatchObject({
       todayTokens: '0',
@@ -130,12 +151,12 @@ describe('buildDashboardData', () => {
       todaySessions: 0,
       cpuLoad: '11%',
       activeAgents: 0,
-      latency: '7ms',
       avgTokensPerSession: '0'
     })
     expect(data.activeTasks).toEqual([])
     expect(data.chartData.labels).toEqual([])
     expect(data.recentSessions).toEqual([])
+    expect(data.lastRefreshTime).toBeDefined()
   })
 
   it('calculates dashboard totals from synthetic sessions', () => {
@@ -147,7 +168,7 @@ describe('buildDashboardData', () => {
       u({ id: 'active-today', title: 'Active today', source: 'cli', started_at: todayMs, ended_at: null, input_tokens: 1000, output_tokens: 500 }),
       u({ id: 'done-today', title: 'Done today', source: 'web', started_at: todayMs2, ended_at: todayMs2 + 1000, input_tokens: 200, output_tokens: 300 }),
       u({ id: 'active-yesterday', title: 'Active yesterday', source: 'cron', started_at: yesterdayMs, ended_at: null, input_tokens: 50, output_tokens: 50 }),
-    ], { now, cpuLoad: '20%', latency: '9ms' })
+    ], { now })
 
     expect(data.stats.totalSessions).toBe(3)
     expect(data.stats.todaySessions).toBe(2)
@@ -217,7 +238,7 @@ describe('buildDashboardData', () => {
     expect(data.recentSessions[0]?.tokens).toBe(800)
   })
 
-  it('generates 7-day trend chart when data exists', () => {
+  it('generates 7-day token trend chart when token data exists', () => {
     // Sessions spread across 7 days
     const sessions = [-6, -4, -2, 0].map((offset, i) =>
       u({
@@ -231,6 +252,8 @@ describe('buildDashboardData', () => {
     const data = buildDashboardData(sessions, { now })
     expect(data.chartData.labels.length).toBeGreaterThan(0)
     expect(data.chartData.datasets[0]?.data.length).toBeGreaterThan(0)
+    // chartFallbackNote 应为 undefined，因为存在 token 数据
+    expect(data.chartFallbackNote).toBeUndefined()
   })
 
   it('excludes sessions older than 7 days from trend', () => {
@@ -246,12 +269,34 @@ describe('buildDashboardData', () => {
     expect(data.chartData.datasets[0]?.data).toEqual([100])
   })
 
-  it('includes _sources metadata in result', () => {
-    const data = buildDashboardData([], {
-      now,
-      sources: { jsonl: 46, sqlite: 6, merged: 3 }
-    })
-    expect(data._sources).toEqual({ jsonl: 46, sqlite: 6, merged: 3 })
+  it('uses session count trend when no token data exists', () => {
+    // Sessions with zero tokens across multiple days
+    const sessions = [-6, -3, 0].map((offset, i) =>
+      u({
+        id: `session-${offset}`,
+        started_at: ms(offset, 10),
+        input_tokens: 0,
+        output_tokens: 0,
+      })
+    )
+
+    const data = buildDashboardData(sessions, { now })
+    // 应该有 chart data（会话数趋势）
+    expect(data.chartData.labels.length).toBeGreaterThan(0)
+    expect(data.chartData.datasets[0]?.label).toBe('会话数')
+    expect(data.chartFallbackNote).toBe('当前数据源无 token 记录，展示会话数趋势')
+    // 每天的会话数应为 1
+    expect(data.chartData.datasets[0]?.data.every((v: number) => v === 1)).toBe(true)
+  })
+
+  it('does not include _sources debug metadata in result', () => {
+    const data = buildDashboardData([], { now })
+    expect(data).not.toHaveProperty('_sources')
+  })
+
+  it('includes lastRefreshTime in result', () => {
+    const data = buildDashboardData([], { now })
+    expect(data.lastRefreshTime).toBe(now.toISOString())
   })
 })
 

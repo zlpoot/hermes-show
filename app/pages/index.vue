@@ -13,18 +13,13 @@
     </div>
     <div v-else class="bg-amber-500/10 text-amber-500 border border-amber-500/30 p-3 rounded-xl flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span class="text-sm font-medium">未连接 Hermes Agent (未检测到 state.db)</span>
+        <span class="text-sm font-medium">未连接 Hermes Agent（未检测到会话数据）</span>
       </div>
     </div>
 
-    <!-- Data Source Info -->
-    <div v-if="data?._dataSources" class="text-xs text-muted-foreground/60 px-1 flex items-center gap-3">
-      <span>数据来源：</span>
-      <span v-if="data._dataSources.jsonl > 0">JSONL {{ data._dataSources.jsonl }} 条</span>
-      <span v-if="data._dataSources.sqlite > 0" :class="data._dataSources.sqlite > 0 && data._dataSources.jsonl > 0 ? 'ml-1' : ''">
-        <template v-if="data._dataSources.jsonl > 0">+</template> SQLite {{ data._dataSources.sqlite }} 条
-      </span>
-      <span v-if="data._dataSources.merged > 0">（其中 {{ data._dataSources.merged }} 条合并自双源）</span>
+    <!-- Last refresh time (subtle) -->
+    <div v-if="data?.lastRefreshTime" class="text-xs text-muted-foreground/50 px-1">
+      最后刷新：{{ formatRefreshTime(data.lastRefreshTime) }}
     </div>
 
     <!-- Stat Cards -->
@@ -42,15 +37,15 @@
       </div>
     </div>
 
-    <!-- Charts and Active Tasks -->
+    <!-- Charts and Recent Active Sessions -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Main Chart -->
       <div class="lg:col-span-2 glass-panel p-6">
         <div class="flex items-center justify-between mb-6">
-          <h3 class="text-lg font-semibold">Tokens 消耗趋势 (近7天)</h3>
+          <h3 class="text-lg font-semibold">{{ chartTitle }}</h3>
           <div class="flex items-center gap-2 text-xs text-muted-foreground">
             <div class="w-3 h-3 rounded-full bg-primary"></div>
-            <span>Tokens</span>
+            <span>{{ chartUnitLabel }}</span>
           </div>
         </div>
         <div class="h-72 w-full flex items-center justify-center border border-card-border rounded-xl bg-card/30 p-4">
@@ -60,14 +55,17 @@
             <p>暂无图表数据</p>
           </div>
         </div>
+        <div v-if="data?.chartFallbackNote" class="mt-2 text-xs text-amber-500/80 text-center">
+          {{ data.chartFallbackNote }}
+        </div>
       </div>
 
-      <!-- Active Tasks -->
+      <!-- Recent Active Sessions -->
       <div class="glass-panel p-6 flex flex-col">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">活跃任务 <span class="text-xs text-muted-foreground font-normal">(5h 窗口)</span></h3>
-          <span class="px-2.5 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-medium border border-primary/30">
-            {{ activeTasks.length }} 运行中
+          <h3 class="text-lg font-semibold">近期活跃会话</h3>
+          <span v-if="activeTasks.length > 0" class="px-2.5 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-medium border border-primary/30">
+            {{ activeTasks.length }}
           </span>
         </div>
         
@@ -84,18 +82,11 @@
               </div>
               <span class="text-xs font-mono text-muted-foreground">{{ task.time }}</span>
             </div>
-            <!-- Progress bar -->
-            <div class="w-full h-1 bg-background rounded-full overflow-hidden mt-2">
-              <div class="h-full bg-primary rounded-full relative w-full">
-                <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite] w-full" 
-                  style="background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);"></div>
-              </div>
-            </div>
           </NuxtLink>
           
           <div v-if="activeTasks.length === 0" class="text-center text-muted-foreground py-8">
             <CheckCircle :size="32" class="mx-auto mb-2 opacity-50" />
-            <p class="text-sm">没有活跃任务</p>
+            <p class="text-sm">暂无活跃会话</p>
           </div>
         </div>
         
@@ -137,7 +128,7 @@
                 <span class="text-xs px-2 py-0.5 rounded bg-muted">{{ session.platform }}</span>
               </td>
               <td class="py-3 px-4 text-muted-foreground">{{ session.time }}</td>
-              <td class="py-3 px-4 text-right font-mono">{{ session.tokens.toLocaleString() }}</td>
+              <td class="py-3 px-4 text-right font-mono">{{ formatTokenCell(session.tokens) }}</td>
             </tr>
           </tbody>
         </table>
@@ -168,6 +159,25 @@ const refresh = async () => {
 }
 
 const chartData = computed(() => data.value?.chartData)
+
+const hasTokenData = computed(() => {
+  if (!data.value?.chartData?.datasets?.[0]?.data) return false
+  return data.value.chartData.datasets[0].data.some((v: number) => v > 0)
+})
+
+const chartTitle = computed(() => {
+  const d = data.value?.chartData
+  if (d?.labels?.length && d?.datasets?.[0]?.data?.length) {
+    return hasTokenData.value ? 'Tokens 消耗趋势（近7天）' : '会话趋势（近7天）'
+  }
+  return '趋势统计（近7天）'
+})
+
+const chartUnitLabel = computed(() => {
+  if (hasTokenData.value) return 'Tokens'
+  return '会话数'
+})
+
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -184,7 +194,10 @@ const chartOptions = {
       padding: 12,
       displayColors: false,
       callbacks: {
-        label: (context: any) => `Tokens: ${context.raw.toLocaleString()}`
+        label: (context: any) => {
+          const label = context.dataset.label || 'Value'
+          return `${label}: ${context.raw.toLocaleString()}`
+        }
       }
     }
   },
@@ -203,6 +216,24 @@ const chartOptions = {
   }
 }
 
+function formatTokenCell(tokens: number): string {
+  if (tokens === 0) return '—'
+  return tokens.toLocaleString()
+}
+
+function formatRefreshTime(iso: string): string {
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return iso
+    return d.toLocaleString('zh-CN', { 
+      month: 'short', day: 'numeric', 
+      hour: '2-digit', minute: '2-digit', second: '2-digit' 
+    })
+  } catch {
+    return iso
+  }
+}
+
 const stats = computed(() => {
   const d = data.value?.stats || {
     todayTokens: '0',
@@ -210,7 +241,6 @@ const stats = computed(() => {
     todaySessions: 0,
     cpuLoad: '0%',
     activeAgents: 0,
-    latency: '0ms',
     avgTokensPerSession: '0'
   }
   
@@ -251,9 +281,9 @@ const stats = computed(() => {
       iconColor: 'text-secondary'
     },
     { 
-      title: 'API 延迟', 
-      value: d.latency, 
-      icon: Zap,
+      title: '人均 Tokens', 
+      value: d.avgTokensPerSession, 
+      icon: Activity,
       iconBg: 'bg-purple-500/10',
       iconColor: 'text-purple-500'
     },
