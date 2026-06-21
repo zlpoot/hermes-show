@@ -1,6 +1,6 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { getHermesDB, getHermesPath } from '../utils/hermes'
-import { listJsonlSessions, normalizeJsonlContent, readJsonlSession, searchJsonlSessions } from '../utils/jsonl'
+import { listAllFileSessions, normalizeJsonlContent, readFileSession, searchJsonlSessions } from '../utils/jsonl'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -24,12 +24,12 @@ export default defineEventHandler(async (event) => {
   
   console.log('[history] Query:', query)
 
-  // 优先从 JSONL 文件读取
+  // 优先从 Hermes 文件会话读取（旧 JSONL + 新 sessions.json/session_*.json）
   if (query.id) {
     // 读取单个会话详情
-    console.log('[history] Fetching JSONL session:', query.id)
+    console.log('[history] Fetching file session:', query.id)
     
-    const jsonData = await readJsonlSession(String(query.id))
+    const jsonData = await readFileSession(String(query.id))
     if (jsonData) {
       const { session, messages } = jsonData
       
@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
           finish_reason: m.finish_reason
         })),
         isRealHermesConnected: true,
-        source: 'jsonl'
+        source: session.storage || 'jsonl'
       }
     }
 
@@ -134,7 +134,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 列出会话列表 - 优先从 JSONL 读取
+  // 列出会话列表 - 优先从 Hermes 文件会话读取
   const searchQuery = query.q as string || ''
   const platform = query.platform as string || ''
   const typesParam = query.types as string || ''
@@ -148,12 +148,12 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 从 JSONL 文件读取
-    console.log('[history] Loading from JSONL files')
+    // 从 Hermes 文件会话读取
+    console.log('[history] Loading from Hermes session files')
     
-    const allJsonlSessions = await listJsonlSessions()
+    const allJsonlSessions = await listAllFileSessions()
     if (allJsonlSessions.length === 0) {
-      throw new Error('No JSONL sessions found')
+      throw new Error('No file sessions found')
     }
 
     let jsonlSessions = searchQuery 
@@ -218,10 +218,10 @@ export default defineEventHandler(async (event) => {
       pageSize: limit,
       hasMore: offset + pagedSessions.length < totalCount,
       isRealHermesConnected: true,
-      source: 'jsonl'
+      source: 'files'
     }
   } catch (e) {
-    console.error('[history] Failed to load JSONL sessions:', e)
+    console.error('[history] Failed to load file sessions:', e)
   }
 
   // SQLite fallback (如果 JSONL 失败)

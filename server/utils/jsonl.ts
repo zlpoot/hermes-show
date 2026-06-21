@@ -18,6 +18,7 @@ export interface JsonlSessionMeta {
   output_tokens?: number
   file_path: string
   file_size: number
+  storage?: 'jsonl' | 'json'
 }
 
 /**
@@ -51,6 +52,27 @@ export interface JsonlMessage {
     completion_tokens?: number
     total_tokens?: number
   }
+}
+
+interface HermesSessionIndexEntry {
+  session_id?: string
+  platform?: string
+  display_name?: string
+  created_at?: string | number
+  updated_at?: string | number
+  expiry_finalized?: boolean
+  metadata?: Record<string, unknown>
+  origin?: Record<string, unknown>
+}
+
+interface HermesJsonSessionFile {
+  session_id?: string
+  platform?: string
+  model?: string
+  session_start?: string | number
+  last_updated?: string | number
+  message_count?: number
+  messages?: JsonlMessage[]
 }
 
 export const parseJsonlTimestamp = (value: unknown): number | undefined => {
@@ -106,6 +128,17 @@ export const getJsonlSessionsPath = (): string => {
   return path.join(getHermesPath(), 'sessions')
 }
 
+const sessionJsonName = (sessionId: string): string => `session_${sessionId}.json`
+
+const normalizeSessionTitle = (value: unknown, fallback: string): string => {
+  if (typeof value === 'string' && value.trim()) return value.trim().slice(0, 100)
+  return fallback
+}
+
+const getMessageTimestamp = (message: JsonlMessage): number | undefined => {
+  return parseJsonlTimestamp(message.timestamp)
+}
+
 /**
  * 列出所有 JSONL 会话文件
  */
@@ -137,6 +170,184 @@ export const listJsonlSessions = async (): Promise<JsonlSessionMeta[]> => {
   }
 
   return sessions
+}
+
+/**
+ * 列出 Hermes 新版 JSON 会话。
+ *
+ * 新版 Hermes 会额外写入 sessions.json 索引和 session_<id>.json 详情文件。
+ * 这些文件通常比历史 JSONL/SQLite 更新，Slack 等平台的近期对话会优先出现在这里。
+ */
+export const listJsonSessions = async (): Promise<JsonlSessionMeta[]> => {
+  const sessionsPath = getJsonlSessionsPath()
+
+  if (!fs.existsSync(sessionsPath)) {
+    console.log('[jsonl] Sessions directory not found:', sessionsPath)
+    return []
+  }
+
+  const map = new Map<string, JsonlSessionMeta>()
+
+  for (const file of fs.readdirSync(sessionsPath).filter(f => /^session_.+\.json$/.test(f))) {
+    const filePath = path.join(sessionsPath, file)
+    const sessionId = file.replace(/^session_/, '').replace(/\.json$/, '')
+    const meta = await parseJsonSessionMeta(filePath, sessionId)
+    if (meta) map.set(meta.id, meta)
+  }
+
+  const indexPath = path.join(sessionsPath, 'sessions.json')
+  if (fs.existsSync(indexPath)) {
+    try {
+      const raw = fs.readFileSync(indexPath, 'utf8')
+      const index = JSON.parse(raw) as Record<string, HermesSessionIndexEntry>
+      const stat = fs.statSync(indexPath)
+
+      for (const [key, entry] of Object.entries(index)) {
+        const sessionId = entry?.session_id
+        if (!sessionId || map.has(sessionId)) continue
+
+        const platform = entry.platform
+          || (typeof entry.origin?.platform === 'string' ? entry.origin.platform : undefined)
+          || key.split(':')[2]
+        const startedAt = parseJsonlTimestamp(entry.created_at)
+        const updatedAt = parseJsonlTimestamp(entry.updated_at)
+
+        map.set(sessionId, {
+          id: sessionId,
+          title: normalizeSessionTitle(entry.display_name, `Session ${sessionId}`),
+          platform,
+          started_at: startedAt ?? updatedAt,
+          ended_at: entry.expiry_finalized ? (updatedAt ?? startedAt) : undefined,
+          message_count: 0,
+          input_tokens: 0,
+          output_tokens: 0,
+          file_path: indexPath,
+          file_size: stat.size,
+          storage: 'json',
+        })
+      }
+    } catch (e) {
+      console.error('[jsonl] Failed to parse sessions.json:', e)
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    const aTime = Math.max(a.started_at ?? 0, a.ended_at ?? 0)
+    const bTime = Math.max(b.started_at ?? 0, b.ended_at ?? 0)
+    return bTime - aTime
+  })
+}
+
+export const listAllFileSessions = async (): Promise<JsonlSessionMeta[]> => {
+  const map = new Map<string, JsonlSessionMeta>()
+
+  for (const session of await listJsonlSessions()) {
+    map.set(session.id, session)
+  }
+
+  for (const session of await listJsonSessions()) {
+    const existing = map.get(session.id)
+    if (!existing) {
+      map.set(session.id, session)
+      continue
+    }
+
+    map.set(session.id, mergeFileSessionMeta(existing, session))
+  }
+
+  return Array.from(map.values()).sort((a, b) => {
+    const aTime = Math.max(a.started_at ?? 0, a.ended_at ?? 0)
+    const bTime = Math.max(b.started_at ?? 0, b.ended_at ?? 0)
+    return bTime - aTime
+  })
+}
+
+export const parseJsonSessionMeta = async (
+  filePath: string,
+  sessionId: string
+): Promise<JsonlSessionMeta | null> => {
+  try {
+    const stat = fs.statSync(filePath)
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8')) as HermesJsonSessionFile
+    const messages = Array.isArray(data.messages) ? data.messages : []
+
+    let messageCount = 0
+    let inputTokens = 0
+    let outputTokens = 0
+    let firstUserContent = ''
+    let startedAt = parseJsonlTimestamp(data.session_start)
+    let endedAt = parseJsonlTimestamp(data.last_updated)
+
+    for (const message of messages) {
+      if (message.role === 'session_meta') continue
+
+      messageCount++
+
+      const ts = getMessageTimestamp(message)
+      if (ts !== undefined) {
+        if (!startedAt || ts < startedAt) startedAt = ts
+        if (!endedAt || ts > endedAt) endedAt = ts
+      }
+
+      const tokenCounts = getJsonlTokenCounts(message)
+      inputTokens += tokenCounts.input
+      outputTokens += tokenCounts.output
+
+      if (message.role === 'user' && !firstUserContent && message.content) {
+        firstUserContent = normalizeJsonlContent(message.content).slice(0, 100)
+      }
+    }
+
+    return {
+      id: data.session_id || sessionId,
+      title: firstUserContent || `Session ${data.session_id || sessionId}`,
+      platform: data.platform,
+      model: data.model,
+      started_at: startedAt,
+      ended_at: endedAt,
+      message_count: Number(data.message_count ?? messageCount) || messageCount,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      file_path: filePath,
+      file_size: stat.size,
+      storage: 'json',
+    }
+  } catch (e) {
+    console.error('[jsonl] Failed to parse JSON session meta:', filePath, e)
+    return null
+  }
+}
+
+function mergeFileSessionMeta(left: JsonlSessionMeta, right: JsonlSessionMeta): JsonlSessionMeta {
+  const leftTime = Math.max(left.started_at ?? 0, left.ended_at ?? 0)
+  const rightTime = Math.max(right.started_at ?? 0, right.ended_at ?? 0)
+  const preferred = rightTime >= leftTime ? right : left
+  const fallback = preferred === right ? left : right
+
+  return {
+    ...fallback,
+    ...preferred,
+    title: preferred.title || fallback.title,
+    platform: preferred.platform || fallback.platform,
+    model: preferred.model || fallback.model,
+    started_at: minDefined(preferred.started_at, fallback.started_at),
+    ended_at: maxDefined(preferred.ended_at, fallback.ended_at),
+    message_count: Math.max(preferred.message_count || 0, fallback.message_count || 0),
+    input_tokens: preferred.input_tokens || fallback.input_tokens || 0,
+    output_tokens: preferred.output_tokens || fallback.output_tokens || 0,
+  }
+}
+
+function minDefined(a?: number, b?: number): number | undefined {
+  if (a === undefined) return b
+  if (b === undefined) return a
+  return Math.min(a, b)
+}
+
+function maxDefined(a?: number, b?: number): number | undefined {
+  if (a === undefined) return b
+  if (b === undefined) return a
+  return Math.max(a, b)
 }
 
 /**
@@ -277,11 +488,49 @@ export const readJsonlSession = async (sessionId: string): Promise<{
   return { session: meta, messages }
 }
 
+export const readJsonSession = async (sessionId: string): Promise<{
+  session: JsonlSessionMeta
+  messages: JsonlMessage[]
+} | null> => {
+  const sessionsPath = getJsonlSessionsPath()
+  const safeSessionId = path.basename(sessionId)
+  const filePath = path.join(sessionsPath, sessionJsonName(safeSessionId))
+
+  if (!fs.existsSync(filePath)) {
+    console.log('[jsonl] JSON session file not found:', filePath)
+    return null
+  }
+
+  const meta = await parseJsonSessionMeta(filePath, safeSessionId)
+  if (!meta) return null
+
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8')) as HermesJsonSessionFile
+    const messages = Array.isArray(data.messages)
+      ? data.messages
+          .filter((message) => message.role !== 'session_meta')
+          .map((message) => ({ ...message, content: normalizeJsonlContent(message.content) }))
+      : []
+
+    return { session: meta, messages }
+  } catch (e) {
+    console.error('[jsonl] Failed to read JSON session:', filePath, e)
+    return null
+  }
+}
+
+export const readFileSession = async (sessionId: string): Promise<{
+  session: JsonlSessionMeta
+  messages: JsonlMessage[]
+} | null> => {
+  return await readJsonSession(sessionId) || await readJsonlSession(sessionId)
+}
+
 /**
  * 搜索 JSONL 会话内容
  */
 export const searchJsonlSessions = async (query: string): Promise<JsonlSessionMeta[]> => {
-  const sessions = await listJsonlSessions()
+  const sessions = await listAllFileSessions()
   
   if (!query) return sessions
 
@@ -296,7 +545,7 @@ export const searchJsonlSessions = async (query: string): Promise<JsonlSessionMe
     }
 
     // 再在消息内容中搜索
-    const data = await readJsonlSession(session.id)
+    const data = await readFileSession(session.id)
     if (data) {
       for (const msg of data.messages) {
         if (msg.content?.toLowerCase().includes(lowerQuery)) {

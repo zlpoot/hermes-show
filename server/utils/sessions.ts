@@ -1,5 +1,5 @@
 import { getHermesDB } from './hermes'
-import { listJsonlSessions, type JsonlSessionMeta } from './jsonl'
+import { listAllFileSessions, type JsonlSessionMeta } from './jsonl'
 
 /**
  * 统一会话格式 — 从 JSONL 和 SQLite 合并后的标准化会话
@@ -19,7 +19,7 @@ const MINUTE_MS = 60_000
 const HOUR_MS = 60 * MINUTE_MS
 
 /**
- * JSONL → UnifiedSession
+ * 文件会话 → UnifiedSession
  */
 function jsonlToUnified(m: JsonlSessionMeta): UnifiedSession {
   return {
@@ -65,26 +65,28 @@ function parseNumericTs(value: string | number | null | undefined): number | nul
 }
 
 /**
- * 加载全部会话 — JSONL 优先，SQLite 补充合并，按 id 去重。
+ * 加载全部会话 — 文件会话优先，SQLite 补充合并，按 id 去重。
+ *
+ * 文件会话包含旧版 .jsonl，以及新版 sessions.json / session_<id>.json。
  *
  * 合并策略：
- *  - JSONL 字段覆盖 SQLite（JSONL 是实时写入的，更新更及时）
- *  - title: JSONL > SQLite
+ *  - 文件字段覆盖 SQLite（Hermes 文件是实时写入的，更新更及时）
+ *  - title: 文件 > SQLite
  *  - started_at: 取两者中较早的
  *  - ended_at: 取两者中较晚的
- *  - tokens: JSONL > SQLite（JSONL 逐行累加更精确）
- *  - source: JSONL > SQLite
+ *  - tokens: 文件 > SQLite（逐消息累加更精确）
+ *  - source: 文件 > SQLite
  */
 export async function loadAllSessions(): Promise<{
   sessions: UnifiedSession[]
   sources: { jsonl: number; sqlite: number; merged: number }
 }> {
-  // 1) 加载 JSONL
+  // 1) 加载 Hermes 文件会话
   let jsonlSessions: JsonlSessionMeta[] = []
   try {
-    jsonlSessions = await listJsonlSessions()
+    jsonlSessions = await listAllFileSessions()
   } catch (e) {
-    console.error('[sessions] Failed to load JSONL sessions:', e)
+    console.error('[sessions] Failed to load file sessions:', e)
   }
 
   // 2) 加载 SQLite
