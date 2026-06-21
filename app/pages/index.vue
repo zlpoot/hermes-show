@@ -17,6 +17,16 @@
       </div>
     </div>
 
+    <!-- Data Source Info -->
+    <div v-if="data?._dataSources" class="text-xs text-muted-foreground/60 px-1 flex items-center gap-3">
+      <span>数据来源：</span>
+      <span v-if="data._dataSources.jsonl > 0">JSONL {{ data._dataSources.jsonl }} 条</span>
+      <span v-if="data._dataSources.sqlite > 0" :class="data._dataSources.sqlite > 0 && data._dataSources.jsonl > 0 ? 'ml-1' : ''">
+        <template v-if="data._dataSources.jsonl > 0">+</template> SQLite {{ data._dataSources.sqlite }} 条
+      </span>
+      <span v-if="data._dataSources.merged > 0">（其中 {{ data._dataSources.merged }} 条合并自双源）</span>
+    </div>
+
     <!-- Stat Cards -->
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       <div v-for="(stat, index) in stats" :key="index" class="glass-panel p-4 flex flex-col justify-between">
@@ -55,7 +65,7 @@
       <!-- Active Tasks -->
       <div class="glass-panel p-6 flex flex-col">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">活跃任务</h3>
+          <h3 class="text-lg font-semibold">活跃任务 <span class="text-xs text-muted-foreground font-normal">(5h 窗口)</span></h3>
           <span class="px-2.5 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-medium border border-primary/30">
             {{ activeTasks.length }} 运行中
           </span>

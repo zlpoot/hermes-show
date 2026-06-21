@@ -1,6 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { buildDashboardData, parseTimestamp } from '../../server/utils/dashboard'
+import { buildDashboardData } from '../../server/utils/dashboard'
+import { isActiveSession, type UnifiedSession } from '../../server/utils/sessions'
 import { formatTokens, formatTime, formatDate } from '../../server/utils/formatters'
+
+function u(overrides: Partial<UnifiedSession> & { id: string }): UnifiedSession {
+  return {
+    id: overrides.id,
+    title: overrides.title || 'Test Session',
+    source: overrides.source || 'cli',
+    started_at: overrides.started_at ?? null,
+    ended_at: overrides.ended_at ?? null,
+    input_tokens: overrides.input_tokens ?? 0,
+    output_tokens: overrides.output_tokens ?? 0,
+    _origin: overrides._origin ?? 'jsonl',
+  }
+}
 
 describe('dashboard formatters', () => {
   describe('formatTokens', () => {
@@ -42,13 +56,12 @@ describe('dashboard formatters', () => {
       const now = new Date()
       const todayTs = Math.floor(now.getTime() / 1000)
       const result = formatTime(String(todayTs))
-      // Should match HH:mm pattern
       expect(result).toMatch(/^\d{2}:\d{2}$/)
     })
 
     it('handles numeric Unix timestamp in milliseconds (today) as HH:mm', () => {
       const now = new Date()
-      const ts = now.getTime() // ms
+      const ts = now.getTime()
       const result = formatTime(String(ts))
       expect(result).toMatch(/^\d{2}:\d{2}$/)
     })
@@ -59,7 +72,6 @@ describe('dashboard formatters', () => {
       yesterday.setHours(10, 0, 0, 0)
       const ts = Math.floor(yesterday.getTime() / 1000)
       const result = formatTime(String(ts))
-      // Should include date and time
       expect(result).toMatch(/\d{1,2}月\d{1,2}日 \d{2}:\d{2}/)
     })
 
@@ -99,6 +111,15 @@ describe('dashboard formatters', () => {
 
 describe('buildDashboardData', () => {
   const now = new Date('2026-06-14T12:00:00')
+  const nowMs = now.getTime()
+
+  // 辅助：生成毫秒时间戳
+  const ms = (daysOffset: number, hours = 12) => {
+    const d = new Date('2026-06-14')
+    d.setDate(d.getDate() + daysOffset)
+    d.setHours(hours, 0, 0, 0)
+    return d.getTime()
+  }
 
   it('returns stable empty dashboard data', () => {
     const data = buildDashboardData([], { now, cpuLoad: '11%', latency: '7ms' })
@@ -117,86 +138,141 @@ describe('buildDashboardData', () => {
     expect(data.recentSessions).toEqual([])
   })
 
-  it('calculates dashboard totals from synthetic session rows', () => {
-    const todaySeconds = Math.floor(new Date('2026-06-14T09:00:00').getTime() / 1000)
-    const todayMillis = new Date('2026-06-14T10:00:00').getTime()
-    const yesterdayIso = '2026-06-13T08:30:00'
+  it('calculates dashboard totals from synthetic sessions', () => {
+    const todayMs = ms(0, 9)   // today 09:00
+    const todayMs2 = ms(0, 10) // today 10:00
+    const yesterdayMs = ms(-1, 8) // yesterday 08:00
 
     const data = buildDashboardData([
-      {
-        id: 'active-seconds',
-        title: 'Active seconds',
-        source: 'cli',
-        started_at: todaySeconds,
-        ended_at: null,
-        input_tokens: 1000,
-        output_tokens: 500
-      },
-      {
-        id: 'done-millis',
-        title: 'Done millis',
-        source: 'web',
-        started_at: todayMillis,
-        ended_at: todayMillis + 1000,
-        input_tokens: 200,
-        output_tokens: 300
-      },
-      {
-        id: 'active-iso',
-        title: 'Active ISO',
-        source: 'cron',
-        started_at: yesterdayIso,
-        ended_at: null,
-        input_tokens: 50,
-        output_tokens: 50
-      }
+      u({ id: 'active-today', title: 'Active today', source: 'cli', started_at: todayMs, ended_at: null, input_tokens: 1000, output_tokens: 500 }),
+      u({ id: 'done-today', title: 'Done today', source: 'web', started_at: todayMs2, ended_at: todayMs2 + 1000, input_tokens: 200, output_tokens: 300 }),
+      u({ id: 'active-yesterday', title: 'Active yesterday', source: 'cron', started_at: yesterdayMs, ended_at: null, input_tokens: 50, output_tokens: 50 }),
     ], { now, cpuLoad: '20%', latency: '9ms' })
 
     expect(data.stats.totalSessions).toBe(3)
     expect(data.stats.todaySessions).toBe(2)
     expect(data.stats.todayTokens).toBe('2.0K')
     expect(data.stats.avgTokensPerSession).toBe('700')
-    expect(data.stats.activeAgents).toBe(2)
-    expect(data.activeTasks.map(task => task.id)).toEqual(['active-seconds', 'active-iso'])
-    expect(data.recentSessions.map(session => session.id)).toEqual([
-      'done-millis',
-      'active-seconds',
-      'active-iso'
-    ])
+    // active-today 在今天 09:00，仍在 5h 窗口内 => 活跃
+    // active-yesterday 昨天 08:00，超过 5h 窗口 => 不活跃
+    expect(data.stats.activeAgents).toBe(1)
+    expect(data.activeTasks.map(task => task.id)).toEqual(['active-today'])
+    expect(data.recentSessions.map(s => s.id)).toEqual(['done-today', 'active-today', 'active-yesterday'])
     expect(data.recentSessions[0]?.tokens).toBe(500)
     expect(data.chartData.datasets[0]?.data).toEqual([100, 2000])
   })
 
-  it('ignores invalid timestamps for today counts and trend but keeps sessions', () => {
+  it('does not count old un-ended sessions as active', () => {
+    const oldMs = ms(-2, 10) // 2 days ago, 10:00 → 50h ago, far past 5h window
+
     const data = buildDashboardData([
-      {
-        id: 'bad-time',
-        title: 'Bad time',
-        started_at: 'not-a-date',
-        ended_at: 'done',
-        input_tokens: 10,
-        output_tokens: 20
-      }
+      u({ id: 'old-stale', title: 'Stale session', started_at: oldMs, ended_at: null }),
     ], { now })
 
-    expect(data.stats.totalSessions).toBe(1)
-    expect(data.stats.todaySessions).toBe(0)
+    expect(data.stats.activeAgents).toBe(0)
+    expect(data.activeTasks).toEqual([])
+  })
+
+  it('counts recent un-ended sessions as active (within 5h)', () => {
+    const recentMs = nowMs - 60 * 60 * 1000 // 1 hour ago
+
+    const data = buildDashboardData([
+      u({ id: 'recent-unended', title: 'Recent session', started_at: recentMs, ended_at: null }),
+    ], { now })
+
+    expect(data.stats.activeAgents).toBe(1)
+    expect(data.activeTasks).toHaveLength(1)
+    expect(data.activeTasks[0]?.id).toBe('recent-unended')
+  })
+
+  it('handles sessions with no token data', () => {
+    const data = buildDashboardData([
+      u({ id: 'no-tokens', title: 'No tokens', started_at: ms(0, 9) }),
+    ], { now })
+
     expect(data.stats.todayTokens).toBe('0')
-    expect(data.chartData.labels).toEqual([])
-    expect(data.recentSessions[0]?.id).toBe('bad-time')
+    expect(data.stats.avgTokensPerSession).toBe('0')
+  })
+
+  it('handles sessions from jsonl+sqlite merge (duplicate IDs)', () => {
+    // 模拟 JSONL 和 SQLite 都有相同 id 的会话
+    const sessionMs = ms(0, 9)
+    const merged = u({
+      id: 'merged-session',
+      title: 'Merged Title',
+      source: 'discord',
+      started_at: sessionMs,
+      ended_at: null,
+      input_tokens: 500,
+      output_tokens: 300,
+      _origin: 'merged',
+    })
+
+    const data = buildDashboardData([merged], { now })
+
+    expect(data.stats.totalSessions).toBe(1)
+    expect(data.stats.todaySessions).toBe(1)
+    expect(data.stats.activeAgents).toBe(1) // within 5h, un-ended
+    expect(data.recentSessions[0]?.id).toBe('merged-session')
+    expect(data.recentSessions[0]?.tokens).toBe(800)
+  })
+
+  it('generates 7-day trend chart when data exists', () => {
+    // Sessions spread across 7 days
+    const sessions = [-6, -4, -2, 0].map((offset, i) =>
+      u({
+        id: `day-${offset}`,
+        started_at: ms(offset, 10),
+        input_tokens: 100,
+        output_tokens: 0,
+      })
+    )
+
+    const data = buildDashboardData(sessions, { now })
+    expect(data.chartData.labels.length).toBeGreaterThan(0)
+    expect(data.chartData.datasets[0]?.data.length).toBeGreaterThan(0)
+  })
+
+  it('excludes sessions older than 7 days from trend', () => {
+    const oldMs = ms(-10, 10) // 10 days ago, outside 7-day window
+    const todayMs = ms(0, 10)
+
+    const data = buildDashboardData([
+      u({ id: 'old', started_at: oldMs, input_tokens: 9999 }),
+      u({ id: 'today', started_at: todayMs, input_tokens: 100 }),
+    ], { now })
+
+    // Only today's session should appear in trend
+    expect(data.chartData.datasets[0]?.data).toEqual([100])
+  })
+
+  it('includes _sources metadata in result', () => {
+    const data = buildDashboardData([], {
+      now,
+      sources: { jsonl: 46, sqlite: 6, merged: 3 }
+    })
+    expect(data._sources).toEqual({ jsonl: 46, sqlite: 6, merged: 3 })
   })
 })
 
-describe('parseTimestamp', () => {
-  it('supports unix seconds, unix milliseconds, and ISO strings', () => {
-    expect(parseTimestamp(1770897600)?.toISOString()).toBe('2026-02-12T12:00:00.000Z')
-    expect(parseTimestamp(1770897600000)?.toISOString()).toBe('2026-02-12T12:00:00.000Z')
-    expect(parseTimestamp('2026-02-12T12:00:00.000Z')?.toISOString()).toBe('2026-02-12T12:00:00.000Z')
+describe('isActiveSession', () => {
+  const now = new Date('2026-06-14T12:00:00').getTime()
+
+  it('returns false when started_at is null', () => {
+    expect(isActiveSession(u({ id: 'x', started_at: null }), now)).toBe(false)
   })
 
-  it('returns null for missing or invalid values', () => {
-    expect(parseTimestamp(null)).toBeNull()
-    expect(parseTimestamp(undefined)).toBeNull()
-    expect(parseTimestamp('not-a-date')).toBeNull()
+  it('returns false when ended_at is set', () => {
+    expect(isActiveSession(u({ id: 'x', started_at: now - 1000, ended_at: now }), now)).toBe(false)
+  })
+
+  it('returns true when un-ended and within 5h', () => {
+    expect(isActiveSession(u({ id: 'x', started_at: now - 60 * 60 * 1000 }), now)).toBe(true) // 1h ago
+    expect(isActiveSession(u({ id: 'y', started_at: now - 4 * 60 * 60 * 1000 }), now)).toBe(true) // 4h ago
+  })
+
+  it('returns false when un-ended but older than 5h', () => {
+    expect(isActiveSession(u({ id: 'x', started_at: now - 6 * 60 * 60 * 1000 }), now)).toBe(false) // 6h ago
+    expect(isActiveSession(u({ id: 'y', started_at: now - 24 * 60 * 60 * 1000 }), now)).toBe(false) // 1 day ago
   })
 })
