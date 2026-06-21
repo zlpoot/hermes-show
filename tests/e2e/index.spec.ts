@@ -6,9 +6,9 @@ test.describe('仪表盘 (Dashboard)', () => {
     await page.waitForLoadState('networkidle')
 
     // 三大 section 标题
-    await expect(page.getByText('运行状态')).toBeVisible()
-    await expect(page.getByText('最近活动')).toBeVisible()
-    await expect(page.getByText('数据覆盖')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '运行状态' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '最近活动' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '数据覆盖' })).toBeVisible()
 
     // 覆盖概况统计
     await expect(page.getByText('总会话数')).toBeVisible()
