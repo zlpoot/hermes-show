@@ -46,6 +46,22 @@ export function formatTime(startedAt: string | null): string {
 }
 
 /**
+ * Relative date formatting — returns "N天前" / "今天" / "昨天" etc.
+ */
+export function formatRelativeDate(date: Date, now: Date = new Date()): string {
+  const diffMs = now.getTime() - date.getTime()
+  const diffDays = Math.floor(diffMs / 86400_000)
+
+  if (diffDays < 0) return '刚刚'
+  if (diffDays === 0) return '今天'
+  if (diffDays === 1) return '昨天'
+  if (diffDays <= 7) return `${diffDays}天前`
+  if (diffDays <= 30) return `${Math.floor(diffDays / 7)}周前`
+  if (diffDays <= 365) return `${Math.floor(diffDays / 30)}个月前`
+  return `${Math.floor(diffDays / 365)}年前`
+}
+
+/**
  * Chart date axis formatting (e.g. "1月15日")
  * Returns the input as-is when it can't be parsed as a date.
  */
